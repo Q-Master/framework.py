@@ -27,9 +27,12 @@ DESCRIPTION = 'Async framework easy async python applications and serivces devel
 URL = 'https://github.com/Q-Master/framework.py'
 
 REQUIRES = """
-    packets@git+https://github.com/Q-Master/packets.py.git
+    packets
     uvloop
     setproctitle
+"""
+LINKS = """
+    git+https://github.com/Q-Master/packets.py.git#egg=packets
 """
 
 VERSION = '0.1.0'
@@ -79,6 +82,7 @@ project = dict(
     url=URL,
     packages=PACKAGES,
     install_requires=[i.strip() for i in REQUIRES.splitlines() if i.strip()],
+    dependency_links=[i.strip() for i in LINKS.splitlines() if i.strip()],
     python_requires='>=3.7',
     classifiers=CLASSIFIERS,
     keywords=KEYWORDS,
