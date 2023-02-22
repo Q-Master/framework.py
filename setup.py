@@ -27,8 +27,8 @@ DESCRIPTION = 'Async framework easy async python applications and serivces devel
 URL = 'https://github.com/Q-Master/framework.py'
 
 REQUIRES = """
-    git+https://github.com/Q-Master/packets.py.git,
-    uvloop,
+    packets@git+https://github.com/Q-Master/packets.py.git
+    uvloop
     setproctitle
 """
 
