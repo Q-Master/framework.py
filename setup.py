@@ -35,7 +35,7 @@ LINKS = """
     git+https://github.com/Q-Master/packets.py.git#egg=packets
 """
 
-VERSION = '0.1.0'
+VERSION = '0.1.1'
 
 
 LONG_DESCRIPTION = """***asyncframework*** - easy async python applications and serivces development library
