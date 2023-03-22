@@ -28,8 +28,8 @@ class ManagerTypes(Enum):
 
 class Worker(Service):
     """Worker parent class."""
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, linear=True, **kwargs)
+    def __init__(self, *args, linear=True, **kwargs):
+        super().__init__(*args, linear=linear, **kwargs)
 
     def __call__(self, *args, **kwargs):
         name = current_process().name
