@@ -11,7 +11,7 @@ from packets.processors import int_t, string_t
 
 @rpc_method()
 def test(app, msg):
-    app.assertEquals(msg, 'complete')
+    app.assertEqual(msg, 'complete')
     app.test_complete.set_result(True)
     return 'ok'
 
@@ -26,7 +26,7 @@ class RPCPacketTestReply(PacketWithID):
 
 @rpc_packet(RPCPacketTestRequest)
 def packet_test(app, msg):
-    app.assertEquals(msg.query, 'test')
+    app.assertEqual(msg.query, 'test')
     app.test_complete.set_result(True)
     return RPCPacketTestReply(reply=1)
 
@@ -38,7 +38,7 @@ class RPCTestCase(unittest.IsolatedAsyncioTestCase):
         self.test_complete = asyncio.Future()
         def fabric():
             sc = SocketConnection()
-            rpc = RPC(self, sc)
+            RPC(self, sc)
             return sc
         srv = SocketServer(fabric, host='127.0.0.1', port=56789)
         await srv.start()
@@ -48,7 +48,7 @@ class RPCTestCase(unittest.IsolatedAsyncioTestCase):
         src_rpc = RPC(self, src)
         await src.connect_to('127.0.0.1', 56789)
         res = await src_rpc.call('test', 'complete')
-        self.assertEquals(res, 'ok')
+        self.assertEqual(res, 'ok')
         await self.test_complete
         await srv.stop()
         await serv_future
@@ -57,7 +57,7 @@ class RPCTestCase(unittest.IsolatedAsyncioTestCase):
         self.test_complete = asyncio.Future()
         def fabric_packet():
             sc = SocketConnection()
-            rpc = RPCPackets(self, sc, response_models=[RPCPacketTestReply, RPCPacketTestRequest])
+            RPCPackets(self, sc, response_models=[RPCPacketTestReply, RPCPacketTestRequest])
             return sc
         srv = SocketServer(fabric_packet, host='127.0.0.1', port=56789)
         await srv.start()
@@ -67,7 +67,7 @@ class RPCTestCase(unittest.IsolatedAsyncioTestCase):
         src_rpc = RPCPackets(self, src, response_models=[RPCPacketTestReply, RPCPacketTestRequest])
         await src.connect_to('127.0.0.1', 56789)
         res = await src_rpc.call(RPCPacketTestRequest(query='test'))
-        self.assertEquals(res.reply, 1)
+        self.assertEqual(res.reply, 1)
         await self.test_complete
         await srv.stop()
         await serv_future
