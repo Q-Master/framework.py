@@ -11,17 +11,17 @@ class NetTestCase(unittest.IsolatedAsyncioTestCase):
         test_complete = asyncio.Future()
         def _on_conn(transport: asyncio.BaseTransport):
             ci = transport.get_extra_info('peername')
-            self.assertEquals(transport.get_extra_info('peername')[0], '127.0.0.1')
+            self.assertEqual(transport.get_extra_info('peername')[0], '127.0.0.1')
 
         def _on_cl(exc: Exception):
             pass
 
         async def _on_msg(src, msg: str):
-            self.assertEquals(msg, 'test')
+            self.assertEqual(msg, 'test')
             await src.write('test')
 
         async def _on_client_msg(src, msg: str):
-            self.assertEquals(msg, 'test')
+            self.assertEqual(msg, 'test')
             test_complete.set_result(True)
 
         def fabric():

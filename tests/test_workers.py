@@ -42,9 +42,9 @@ class WorkersTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_workers(self):
         mgr = TestManager(self)
         await mgr.start()
-        self.assertEquals(len(mgr._workers_list), 2)
+        self.assertEqual(len(mgr._workers_list), 2)
         mgr_future = mgr.run()
         await asyncio.sleep(.5)
         await mgr.stop()
-        self.assertEquals(len(mgr._workers_list), 0)
+        self.assertEqual(len(mgr._workers_list), 0)
         await mgr_future
