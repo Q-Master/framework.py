@@ -100,12 +100,11 @@ class Service(metaclass=ABCMeta):
         """        
         raise NotImplementedError('Must be implemented')
 
-    @abstractmethod
     async def __body__(self, *args, **kwargs):
         """Body function.
-        Need to be implemented. This is the main service function.
+        Might be implemented in children. This is the main service function called when `run()`.
         """
-        raise NotImplementedError('Must be implemented')
+        pass
 
     @abstractmethod
     async def __stop__(self):
