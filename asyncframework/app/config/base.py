@@ -124,5 +124,5 @@ class ConfigProtocolBase(ConfigProtocolMthds, Packet):
 class ConfigTableProtocolBase(ConfigProtocolMthds, TablePacket):
     def reload(self):
         data = self._reload_begin()
-        super(TablePacket, self).reload(data)
+        super(TablePacket, self).update(data)
         self._reload_complete()
