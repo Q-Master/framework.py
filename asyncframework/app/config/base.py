@@ -48,8 +48,6 @@ class ConfigProtocolMeta(PacketMeta):
                 config_readers[attr] = value
                 namespace.pop(attr)
                 slots.add(attr)
-            elif issubclass(value, FieldBase):
-                slots.add(attr)
 
         namespace['__config_readers__'] = config_readers
         namespace['__slots__'] = list(slots)
@@ -60,7 +58,7 @@ class ConfigProtocolMthds(metaclass=ConfigProtocolMeta):
     __log = log.get_logger('config')
     __config_readers__: dict = {}
     __filename__: Optional[Union[str, list, set, tuple]] = None
-    __slots__ = ['__filename__', '__config_readers__', 'ConfigProtocolMthds__log']
+    __slots__: list = []
 
     @property
     def log(self):
