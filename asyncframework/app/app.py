@@ -21,8 +21,6 @@ class App(Service):
     async def __start__(self, *args, **kwargs):
         for signame in ('SIGINT', 'SIGTERM'):
             self.ioloop.add_signal_handler(getattr(signal, signame), self._fire_stop_waiter)
-        result = await super().__start__(*args, **kwargs)
-        return result
 
     async def __call__(self, ioloop: asyncio.events.AbstractEventLoop, *args, **kwargs):
         self.log.info(u'Starting Application')

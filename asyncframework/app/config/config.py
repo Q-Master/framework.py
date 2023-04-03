@@ -34,6 +34,7 @@ class Config(ConfigProtocolBase):
     log_format: str = Field(string_t, default='%(asctime)s.%(msecs)03d %(name)s <%(levelname).1s> %(module)s:%(lineno)d] %(tags)s %(message)s')  # type: ignore
     log_format_rsyslog: str = Field(string_t, default=node() + ' %(name)s:<%(levelname).1s> %(module)s:%(lineno)d] %(tags)s %(message)s')  # type: ignore
     log_date_format: str = Field(string_t, default='%Y-%m-%d %H:%M:%S')   # type: ignore    
+    log_rotated_amount: int = Field(int_t, default=1)  # type: ignore
 
     def on_reconfigure_signal(self):
         """Callback, which will be run on getting signal from `enable_reconfiguration_signal` (reread configuration) signal"""
@@ -51,7 +52,7 @@ class Config(ConfigProtocolBase):
             syslog_port=self.syslog_port,
             log_level=self.log_level,
             log_levels=self.log_levels,
-            backup_count=self.backup_count,
+            log_rotated_amount=self.log_rotated_amount,
             formatter=LogFormatter(self.log_format if not self.syslog else self.log_format_rsyslog, self.log_date_format)
         )
 
