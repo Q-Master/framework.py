@@ -70,7 +70,7 @@ class ConfigProtocolMthds(metaclass=ConfigProtocolMeta):
 
     def __repr__(self):
         return f'<{self.__filename__}>'
-    
+
     @classmethod
     def load(cls, filename = None):
         if not cls.__filename__ and not filename:
@@ -89,7 +89,7 @@ class ConfigProtocolMthds(metaclass=ConfigProtocolMeta):
         module.reload()
         return ReadOnly(module)
 
-    def reload(self):
+    def _reload_begin(self):
         cfg_data = {}
         if not self.__filename__:
             raise RuntimeError(f'No config file for {self.__class__.__name__}')
@@ -101,21 +101,28 @@ class ConfigProtocolMthds(metaclass=ConfigProtocolMeta):
         else:
             with open(self.__filename__) as f:
                 cfg_data = json.load(f)
-        super().reload(self, cfg_data)
+        return cfg_data
 
+    def _reload_complete(self):
         for name, proto in self.__config_readers__.items():
             module = proto.load()
             setattr(self, name, module)
         self.on_config_loaded()
-    
+
     def on_config_loaded(self):
         """On config loaded callback"""
         pass
 
 
-class ConfigProtocolBase(Packet, ConfigProtocolMthds):
-    pass
-    
+class ConfigProtocolBase(ConfigProtocolMthds, Packet):
+    def reload(self):
+        data = self._reload_begin()
+        super(Packet, self).update(data)
+        self._reload_complete()
 
-class ConfigTableProtocolBase(TablePacket, ConfigProtocolMthds):
-    pass
+
+class ConfigTableProtocolBase(ConfigProtocolMthds, TablePacket):
+    def reload(self):
+        data = self._reload_begin()
+        super(TablePacket, self).reload(data)
+        self._reload_complete()
