@@ -49,7 +49,7 @@ class PidFile():
         try:
             fcntl.flock(fp.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
             fp.truncate(0)
-            fp.write(f'{os.getpid()}\n')
+            fp.write(f'{os.getpid()}\n'.encode())
         except Exception as e:
             fp.close()
             raise PidFileException(*e.args)
