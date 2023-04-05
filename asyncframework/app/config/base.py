@@ -72,7 +72,7 @@ class ConfigProtocolMthds(metaclass=ConfigProtocolMeta):
         return f'<{self.__filename__}>'
 
     @classmethod
-    def load(cls, filename = None):
+    def load_cfg(cls, filename = None):
         if not cls.__filename__ and not filename:
             raise RuntimeError(f'No config file for {cls.__class__.__name__}')
         if filename:
@@ -85,27 +85,29 @@ class ConfigProtocolMthds(metaclass=ConfigProtocolMeta):
             else:
                 cls.__filename__ = [cls.__filename__, filename]
 
-        module = cls()
-        module.reload()
+        data = cls._load_data(cls.__filename__)
+        module = cls.load(data)
+        module._reload_complete()
         return ReadOnly(module)
 
-    def _reload_begin(self):
+    @classmethod
+    def _load_data(cls, fname):
         cfg_data = {}
-        if not self.__filename__:
-            raise RuntimeError(f'No config file for {self.__class__.__name__}')
-        if isinstance(self.__filename__, (list, tuple, set)):
-            for fn in self.__filename__:
+        if not fname:
+            raise RuntimeError(f'No config file for {cls.__name__}')
+        if isinstance(fname, (list, tuple, set)):
+            for fn in fname:
                 with open(fn, 'r') as f:
                     rd = json.load(f)
                     merge_dicts(cfg_data, rd)
         else:
-            with open(self.__filename__) as f:
+            with open(fname) as f:
                 cfg_data = json.load(f)
         return cfg_data
 
     def _reload_complete(self):
         for name, proto in self.__config_readers__.items():
-            module = proto.load()
+            module = proto.load_cfg()
             setattr(self, name, module)
         self.on_config_loaded()
 
@@ -115,14 +117,8 @@ class ConfigProtocolMthds(metaclass=ConfigProtocolMeta):
 
 
 class ConfigProtocolBase(ConfigProtocolMthds, Packet):
-    def reload(self):
-        data = self._reload_begin()
-        super(Packet, self).update(data)
-        self._reload_complete()
+    pass
 
 
 class ConfigTableProtocolBase(ConfigProtocolMthds, TablePacket):
-    def reload(self):
-        data = self._reload_begin()
-        super(TablePacket, self).update(data)
-        self._reload_complete()
+    pass
