@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 import asyncio
-from typing import Any, Iterable, Optional, Dict, Tuple, Callable, TypeVar, Union
+from typing import Any, Sequence, Optional, Dict, Tuple, Callable, TypeVar, Union
 from logging import Logger
 from packets import PacketWithID
 from ..decorator import rpc_methods
@@ -24,7 +24,7 @@ class RPCPackets(RPC[T]):
         app: T, 
         connection: ConnectionBase, 
         *args, 
-        response_models: Optional[Iterable[PacketWithID]] = None, 
+        response_models: Optional[Sequence[PacketWithID]] = None, 
         methods: Dict[str, Tuple[Callable, Any]] = rpc_methods, 
         dont_receive=False, 
         **kwargs
@@ -36,7 +36,7 @@ class RPCPackets(RPC[T]):
             connection (ConnectionBase): the rpc connection
             raise_on_unregistered (bool, optional): raise error if the id is not registered. Defaults to True.
             methods (Dict[str, Tuple[Callable, Any]], optional): mapping of id: method used to dispatch the rpc calls. Defaults to rpc_methods.
-            response_models (Optional[Iterable[PacketWithID]], optional): `packet.PacketWithID` types for response deserializing. Defaults to None.
+            response_models (Optional[Sequence[PacketWithID]], optional): `packet.PacketWithID` types for response deserializing. Defaults to None.
             dont_receive (bool, optional): dont receive anything. Defaults to False.        
         """
         super().__init__(app, connection, *args, methods=methods, dont_receive=dont_receive, **kwargs)
