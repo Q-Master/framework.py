@@ -3,7 +3,7 @@ import os
 from typing import Optional, Union
 from packets import Packet, TablePacket, FieldBase
 from packets._packetbase import PacketMeta
-from packets._json import json
+from packets import json
 from ...log import log
 from ...util.dict_merge import merge_dicts
 from ...util.ro import ReadOnly

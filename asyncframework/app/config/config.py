@@ -8,7 +8,7 @@ from itertools import chain
 from platform import node
 from packets import Field, Packet
 from packets._packetbase import PacketMeta
-from packets._json import json
+from packets import json
 from packets.processors import Hash, log_level_t, int_t, string_t, bool_t
 from .base import ConfigProtocolBase, ConfigTableProtocolBase
 from ...log import log

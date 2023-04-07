@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 from typing import Optional
 from packets import FieldProcessor
-from packets._json import json
+from packets import json
 
 
 __all__ = ['NotToHandle', 'RPCException', 'WrongConsumer', 'RPCSenderStopped', 'RPCDispatcherStopped', 'RPCExceptionProcessor', 'rpc_exception_t']

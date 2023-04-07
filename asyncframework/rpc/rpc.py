@@ -5,7 +5,7 @@ from typing import Union, Any, Dict, Optional, Iterable, TypeVar, Generic, Calla
 from itertools import chain
 from logging import Logger
 from uuid import uuid4
-from packets._json import json
+from packets import json
 from .decorator import rpc_methods
 from ..aio import check_is_async
 from .types import MessageType, Request, Response, RPCSenderStopped, WrongConsumer, RPCDispatcherStopped, RPCException, NotToHandle
