@@ -102,6 +102,19 @@ def str_to_unixtime(time_str: str) -> int:
     return to_unixtime(dt)
 
 
+def unixtime_to_str(ts: int) -> str:
+    """Convert unixtime to text string
+
+    Args:
+        ts (int): unix time
+
+    Returns:
+        str: converted string
+    """
+    dt = datetime.fromtimestamp(ts)
+    return to_text(dt)
+
+
 def midnight(dtnow: Optional[Union[datetime, int, float]] = None, offset: int = 0) -> datetime:
     """Get midnight for current date or given date
 
