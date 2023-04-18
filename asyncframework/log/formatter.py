@@ -1,5 +1,5 @@
 # -*- coding:utf-8 -*-
-from typing import Tuple
+from typing import Tuple, Any, Mapping, Sequence
 from itertools import chain
 import logging
 
@@ -18,12 +18,41 @@ class LogFormatter(logging.Formatter):
         if 'tags' not in record.__dict__:
             record.tags = '{}'
         else:
-            record.tags = '{' + ','.join(('='.join(map(str, i)) for i in record.tags.items())) + '}'
+            record.tags = str(record.tags)
         return super().format(record)
 
 
+class TagDict(dict):
+    def __setitem__(self, __key: Any, __value: Any) -> None:
+        __key = f'"{__key}"'
+        __value = _to_tag_value(__value)
+        return super().__setitem__(__key, __value)
+    
+    def __str__(self) -> str:
+        return f'{{{",".join((":".join(map(str, i)) for i in self.items()))}}}'
+
+
+def _to_tag_value(__value: Any) -> str:
+    if isinstance(__value, str):
+        __value = f'"{__value}"'
+    elif isinstance(__value, Mapping):
+        __value = str(_to_tag_dict(__value))
+    elif isinstance(__value, Sequence):
+        __value = f'[{",".join([_to_tag_value(v) for v in __value])}]'
+    else:
+        __value = str(__value)
+    return __value
+
+
+def _to_tag_dict(__value: Mapping) -> 'TagDict':
+    nv: TagDict = TagDict()
+    for k, v in __value.items():
+        nv[k] = v
+    return nv
+
+
 class LoggerTaggingAdapter(logging.LoggerAdapter):
-    tags: dict = {}
+    tags: TagDict = TagDict()
     extra: dict = {}
 
     def __init__(self, logger, extra = None) -> None:
