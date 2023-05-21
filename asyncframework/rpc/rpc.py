@@ -138,6 +138,8 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
                 self.log.error(f'Some tasks are remaining unclosed ({len(pending)}). Cancelling.')
                 for future in pending:
                     future.cancel()
+        if self.connection.is_connected:
+            self.connection.close()
         self.log.info('RPC stopped')
 
     async def _recv_request(

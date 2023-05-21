@@ -16,6 +16,11 @@ class ConnectionBase(metaclass=ABCMeta):
     __on_connection_lost: Optional[Callable] = None
     __on_message_received: Optional[Callable] = None
     __on_message_returned: Optional[Callable] = None
+    __connected: bool = False
+
+    @property
+    def is_connected(self):
+        return self.__connected
 
     def add_callbacks(
             self,
@@ -55,6 +60,7 @@ class ConnectionBase(metaclass=ABCMeta):
         if self.on_close_future and not self.on_close_future.done():
             self.on_close_future.set_result(self)
         self.on_close_future = None
+        self.__connected = False
 
     @abstractmethod
     async def write(self, msg: str, *args, **kwargs):
@@ -67,12 +73,14 @@ class ConnectionBase(metaclass=ABCMeta):
         raise NotImplementedError()
 
     async def on_connection_made(self, transport, *args, **kwargs):
+        self.__connected = True
         if self.__on_connection_made:
             await mayBeFuture(self.__on_connection_made, transport, *args, **kwargs)
 
     async def on_connection_lost(self, exc, *args, **kwargs):
         if self.__on_connection_lost:
             await mayBeFuture(self.__on_connection_lost, exc, *args, **kwargs)
+        self.__connected = False
 
     async def on_message_received(self, msg: str, *args, **kwargs):
         if self.__on_message_received:
