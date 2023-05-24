@@ -49,6 +49,14 @@ class SocketConnection(ConnectionBase):
     __pause_future: Optional[asyncio.Future] = None
     __delimiter: Optional[bytes] = None
 
+    @property
+    def host(self) -> Optional[str]:
+        return self.__connection_host
+    
+    @property
+    def port(self) -> Optional[int]:
+        return self.__connection_port
+
     def __init__(self, *args, delimiter=None, **kwargs) -> None:
         """Constructor
 
