@@ -80,22 +80,22 @@ class RPCPackets(RPC[T]):
         else:
             if not self.response_models:
                 future.set_result(response.result)
-
-            packet_cls = None
-            if isinstance(response.result, dict) and '_' in response.result:
-                packet_id: Optional[int] = response.result.get('_', None)
-                if packet_id is not None:
-                    packet_cls = self.response_models.get(packet_id, None)
-                else:
-                    packet_cls = None
-            
-            if packet_cls:
-                packet = packet_cls.load(response.result)
-                future.set_result(packet)
-            elif self.raise_on_unregistered:
-                raise RPCException(f'There is no model for response:{response.result}')
             else:
-                future.set_result(response.result)
+                packet_cls = None
+                if isinstance(response.result, dict) and '_' in response.result:
+                    packet_id: Optional[int] = response.result.get('_', None)
+                    if packet_id is not None:
+                        packet_cls = self.response_models.get(packet_id, None)
+                    else:
+                        packet_cls = None
+                
+                if packet_cls:
+                    packet = packet_cls.load(response.result)
+                    future.set_result(packet)
+                elif self.raise_on_unregistered:
+                    raise RPCException(f'There is no model for response:{response.result}')
+                else:
+                    future.set_result(response.result)
 
     async def _dispatch_request(self, request: Request):
         if not isinstance(request.message, dict) or '_' not in request.message:
