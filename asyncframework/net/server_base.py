@@ -3,6 +3,7 @@ import asyncio
 from typing import List, Any, Callable, Type, Optional
 from ..log.log import get_logger
 from ..app.service import Service
+from ..aio.is_async import is_async
 from .connection_base import ConnectionBase
 
 
@@ -29,7 +30,10 @@ class ServerBase(Service):
     async def on_client_connected(self, *args, **kwargs):
         """Default callback to call on client connection event
         """
-        client = self.connection_fabric()
+        if is_async(self.connection_fabric):
+            client = await self.connection_fabric()
+        else:
+            client = self.connection_fabric()
         await client.connect(*args, **kwargs)
         self.client_pool.append(client)
         client.on_close_future.add_done_callback(self._on_close)
