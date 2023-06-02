@@ -71,5 +71,8 @@ class RPCExceptionProcessor(FieldProcessor):
     def py_to_raw(self, value: RPCException):
         return json.dumps({'message': value.message, 'traceback': value.traceback, 'cls': _EXCEPTIONS_MAP.get(type(value))})
 
+    def my_type(cls):
+        return 'RPCException'
+
 
 rpc_exception_t = RPCExceptionProcessor()
