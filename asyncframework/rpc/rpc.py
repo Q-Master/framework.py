@@ -303,11 +303,11 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             response = Response(result=result, exception=exception, correlation_id=request.correlation_id)
             await self._write(response, *args, **kwargs)
 
-    async def _write(self, msg, *args, **kwargs):
+    async def _write(self, msg: Request | Response, *args, **kwargs):
         """Send message to transport.
         Might be overloaded to process the message before sending
         """
-        await self.connection.write(msg.dumps(), *args, headers=msg.headers, correlation_id=msg.corellation_id, app_id=msg.app_id, **kwargs)
+        await self.connection.write(msg.dumps(), *args, headers=msg.headers, correlation_id=msg.correlation_id, app_id=msg.app_id, **kwargs)
         
     async def _dispatch_request(self, request: Request):
         """Dispatching the received request.
