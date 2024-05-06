@@ -76,6 +76,8 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             response_required: bool = True,
             correlation_id: Union[None, str] = None,
             wait_timeout: Union[None, int, float] = None,
+            headers: Union[None, Dict[str, Any]] = None,
+            app_id: Union[None, str] = None,
             **kwargs
     ) -> Any:
         """Call the remote method
@@ -101,7 +103,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         assert isinstance(correlation_id, str) or correlation_id is None, (correlation_id, type(correlation_id))
 
         correlation_id = correlation_id or self._next_request_id()
-        req = Request(message=request, correlation_id=correlation_id, response_required=response_required, args=args, kwargs=kwargs)
+        req = Request(message=request, correlation_id=correlation_id, response_required=response_required, headers=headers, app_id=app_id, args=args, kwargs=kwargs)
 
         self.log.debug(f'Sending RPC request correlation_id: {correlation_id}, need_response: {"True" if response_required else "False"}, request: {request}, args: {args}, kwargs: {kwargs}')
         await self._write(req)
@@ -197,15 +199,22 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         """
         return uuid4().hex
 
-    def _load_message(self, msg: str) -> Union[Request, Response]:
+    def _load_message(self, msg: str, **kwargs) -> Union[Request, Response]:
         js: dict = json.loads(msg)
         message_type = js.get('message_type', None)
         if message_type == MessageType.MSG_REQUEST.value:
-            return Request.load(js)
+            result = Request.load(js)
         elif message_type == MessageType.MSG_RESPONSE.value:
-            return Response.load(js)
+            result = Response.load(js)
         else:
             raise Exception(f'Unknown message type received {message_type}')
+        if 'correlation_id' in kwargs:
+            result.correlation_id = kwargs['correlation_id']
+        if 'headers' in kwargs:
+            result.headers = kwargs['headers']
+        if 'app_id' in kwargs:
+            result.app_id = kwargs['app_id']
+
 
     async def _message_received(self, instance: ConnectionBase, msg: str, *args, **kwargs):
         """Callback on incoming message from transport
@@ -214,7 +223,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             msg (str): the incoming message
         """
         try:
-            loaded_msg = self._load_message(msg)
+            loaded_msg = self._load_message(msg, **kwargs)
             if loaded_msg.message_type == MessageType.MSG_REQUEST:
                 await self._recv_request(loaded_msg, *args, **kwargs)
             elif loaded_msg.message_type == MessageType.MSG_RESPONSE:
@@ -229,7 +238,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             msg (str): returned message
         """ 
         try:
-            loaded_msg = self._load_message(msg)
+            loaded_msg = self._load_message(msg, **kwargs)
             if loaded_msg.message_type == MessageType.MSG_REQUEST:
                 await self._recv_response(
                     Response(
@@ -298,7 +307,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         """Send message to transport.
         Might be overloaded to process the message before sending
         """
-        await self.connection.write(msg.dumps(), *args, **kwargs)
+        await self.connection.write(msg.dumps(), *args, headers=msg.headers, correlation_id=msg.corellation_id, app_id=msg.app_id, **kwargs)
         
     async def _dispatch_request(self, request: Request):
         """Dispatching the received request.
@@ -319,9 +328,9 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
 
         method_impl, _ = self.methods[request.message]
         if check_is_async(method_impl):
-            return await method_impl(self.app, *request.args, **request.kwargs)
+            return await method_impl(self.app, *request.args, request.correlation_id, request.app_id, request.headers, **request.kwargs)
         else:
-            return method_impl(self.app, *request.args, **request.kwargs)
+            return method_impl(self.app, *request.args, request.correlation_id, request.app_id, request.headers, **request.kwargs)
 
     async def _dispatch_response(self, future: asyncio.Future, response: Response):
         if response.exception:

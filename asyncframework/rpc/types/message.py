@@ -17,8 +17,10 @@ message_type_t = Enumeration(MessageType)
 
 
 class BaseMessage(Packet):
+    correlation_id: str
+    headers: Dict[str, Any]
+    app_id: str
     message_type: MessageType = Field(message_type_t)  # type: ignore
-    correlation_id: str = Field(string_t)  # type: ignore
 
 
 class Request(BaseMessage):
