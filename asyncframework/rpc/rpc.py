@@ -276,7 +276,11 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         result = None
 
         if self.stopped and request.response_required:
-            await self._write(Response(exception=RPCDispatcherStopped('RPC is closed'), correlation_id=request.correlation_id), *args, **kwargs)
+            await self._write(Response(
+                exception=RPCDispatcherStopped('RPC is closed'), 
+                correlation_id=request.correlation_id,
+                app_id=request.app_id
+            ), *args, **kwargs)
             return
 
         try:
@@ -284,7 +288,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             self.log.debug(f'RPC is complete. correlation_id: {request.correlation_id}, result: {result}', request.correlation_id, result)
         except WrongConsumer as e:
             if self.raise_on_unregistered:
-                exception = RPCException(message=e.message)
+                exception = RPCException(message=str(e), correlation_id=request.correlation_id, app_id=request.app_id)
             else:
                 self.log.error(f'RPC request cant be processed. No dispatcher for it: {e}')
                 return
@@ -297,8 +301,9 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
 
         if exception:
             self.log.error(f'RPC function exception. correlation_id: {request.correlation_id}, exception: {exception}')
-
-        if request.response_required:
+            response = Response(exception=exception, correlation_id=request.correlation_id, app_id=request.app_id)
+            await self._write(response, *args, **kwargs)
+        elif request.response_required:
             self.log.debug(f'Replying to RPC. correlation_id: {request.correlation_id}')
             response = Response(result=result, exception=exception, correlation_id=request.correlation_id)
             await self._write(response, *args, **kwargs)
@@ -307,7 +312,24 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         """Send message to transport.
         Might be overloaded to process the message before sending
         """
-        await self.connection.write(msg.dumps(), *args, headers=msg.headers, correlation_id=msg.correlation_id, app_id=msg.app_id, **kwargs)
+        if msg.exception:
+            await self.connection.write(
+                msg.exception.message, 
+                content_type='application/x-exception', 
+                correlation_id=msg.correlation_id, 
+                app_id=msg.app_id,
+                type=msg.exception.type
+                **kwargs
+            )
+        else:
+            await self.connection.write(
+                msg.dumps(), *args, 
+                content_type='application/json', 
+                headers=msg.headers, 
+                correlation_id=msg.correlation_id, 
+                app_id=msg.app_id, 
+                **kwargs
+            )
         
     async def _dispatch_request(self, request: Request):
         """Dispatching the received request.

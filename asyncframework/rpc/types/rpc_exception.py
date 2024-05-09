@@ -14,10 +14,16 @@ class NotToHandle(Exception):
 
 
 class RPCException(Exception):
-    def __init__(self, message: str, traceback: Optional[str] = None):
+    __slots__ = (
+        'message',
+        'traceback',
+        'type'
+    )
+    def __init__(self, message: str, type: Optional[str] = None, traceback: Optional[str] = None):
         super().__init__()
         self.message = message
         self.traceback = traceback
+        self.type = type
 
     def __str__(self):
         return f'<RPCException message: {self.message}, traceback: {self.traceback}>'
