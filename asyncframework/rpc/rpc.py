@@ -327,7 +327,8 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
                 content_type='application/json', 
                 headers=msg.headers, 
                 correlation_id=msg.correlation_id, 
-                app_id=msg.app_id, 
+                app_id=msg.app_id,
+                type='request' if isinstance(msg, Request) else 'response'
                 **kwargs
             )
         

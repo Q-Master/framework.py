@@ -23,7 +23,7 @@ class RPCException(Exception):
         super().__init__()
         self.message = message
         self.traceback = traceback
-        self.type = type
+        self.type = type or self.__class__.__name__
 
     def __str__(self):
         return f'<RPCException message: {self.message}, traceback: {self.traceback}>'
