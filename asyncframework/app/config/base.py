@@ -43,9 +43,10 @@ class ConfigProtocolMeta(PacketMeta):
                 config_readers.update(base.__config_readers__)
 
         for attr, value in namespace.copy().items():
-            if isinstance(value, type) and issubclass(value, (ConfigProtocolBase, ConfigTableProtocolBase)):
+            if (isinstance(value, type) and issubclass(value, (ConfigProtocolBase, ConfigTableProtocolBase))) or \
+                isinstance(value, (ConfigProtocolBase, ConfigTableProtocolBase)):
                 assert attr not in config_readers, f'Reassignment of {attr}'
-                config_readers[attr] = value
+                config_readers[attr] = value if isinstance(value, type) else type(value)
                 namespace.pop(attr)
                 slots.add(attr)
 
