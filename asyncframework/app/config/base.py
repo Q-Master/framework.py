@@ -15,6 +15,14 @@ __all__ = ['ConfigProtocolBase', 'ConfigTableProtocolBase']
 _empty = object()
 
 
+class _ConfigProtocolBase(Packet):
+    pass
+
+
+class _ConfigTableProtocolBase(TablePacket):
+    pass
+
+
 class ConfigProtocolMeta(PacketMeta):
     def __new__(cls, name, bases, namespace, **kwargs):
         filenames = {}
@@ -43,8 +51,8 @@ class ConfigProtocolMeta(PacketMeta):
                 config_readers.update(base.__config_readers__)
 
         for attr, value in namespace.copy().items():
-            if (isinstance(value, type) and issubclass(value, (ConfigProtocolBase, ConfigTableProtocolBase))) or \
-                isinstance(value, (ConfigProtocolBase, ConfigTableProtocolBase)):
+            if (isinstance(value, type) and issubclass(value, (_ConfigProtocolBase, _ConfigTableProtocolBase))) or \
+                isinstance(value, (_ConfigProtocolBase, _ConfigTableProtocolBase)):
                 assert attr not in config_readers, f'Reassignment of {attr}'
                 config_readers[attr] = value if isinstance(value, type) else type(value)
                 namespace.pop(attr)
@@ -117,9 +125,9 @@ class ConfigProtocolMthds(metaclass=ConfigProtocolMeta):
         pass
 
 
-class ConfigProtocolBase(ConfigProtocolMthds, Packet):
+class ConfigProtocolBase(ConfigProtocolMthds, _ConfigProtocolBase):
     pass
 
 
-class ConfigTableProtocolBase(ConfigProtocolMthds, TablePacket):
+class ConfigTableProtocolBase(ConfigProtocolMthds, _ConfigTableProtocolBase):
     pass
