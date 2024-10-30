@@ -52,14 +52,12 @@ def _to_tag_dict(__value: Mapping) -> 'TagDict':
 
 
 class LoggerTaggingAdapter(logging.LoggerAdapter):
-    tags: TagDict = TagDict()
-    extra: dict = {}
 
     def __init__(self, logger, extra = None) -> None:
         if isinstance(logger, LoggerTaggingAdapter):
             logger, self.tags = logger.logger, logger.tags.copy()
         else:
-            pass
+            self.tags = TagDict()
         super().__init__(logger, extra if extra is not None else {})
         self.extra['tags'] = self.tags
         

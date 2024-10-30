@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 
-__version__ = '0.1.32'
+__version__ = '0.1.33'
 
 __title__ = 'asyncframework'
 __description__ = 'Async framework easy async python applications and serivces development library.'

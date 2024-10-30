@@ -72,4 +72,4 @@ def roll_event_probabilities(events: Sequence[Any], probabilities: List[float]) 
         Any: a single random element from events list
     """    
     distribution = get_distribution(probabilities)
-    return roll_event_d(events, distribution)
+    return roll_event_distribution(events, distribution)
