@@ -4,7 +4,16 @@ from packets import FieldProcessor
 from packets import json
 
 
-__all__ = ['NotToHandle', 'RPCException', 'WrongConsumer', 'RPCSenderStopped', 'RPCDispatcherStopped', 'RPCExceptionProcessor', 'rpc_exception_t']
+__all__ = [
+    'NotToHandle', 
+    'RPCException', 
+    'WrongConsumer', 
+    'RPCSenderStopped', 
+    'RPCDispatcherStopped', 
+    'RPCDeliveryFailed', 
+    'RPCExceptionProcessor', 
+    'rpc_exception_t'
+]
 
 
 class NotToHandle(Exception):
@@ -46,6 +55,12 @@ class RPCSenderStopped(RPCException):
 
 class RPCDispatcherStopped(RPCException):
     """Exception on trying to dispatch message if stopping
+    """
+    pass
+
+
+class RPCDeliveryFailed(RPCException):
+    """Exception caused by delivery error
     """
     pass
 

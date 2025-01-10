@@ -8,7 +8,7 @@ from uuid import uuid4
 from packets import json
 from .decorator import rpc_methods
 from ..aio import check_is_async
-from .types import MessageType, Request, Response, RPCSenderStopped, WrongConsumer, RPCDispatcherStopped, RPCException, NotToHandle, ResponseType
+from .types import MessageType, Request, Response, RPCSenderStopped, WrongConsumer, RPCDispatcherStopped, RPCException, NotToHandle, ResponseType, RPCDeliveryFailed
 from ..net.connection_base import ConnectionBase
 from ..log.log import get_logger
 
@@ -214,15 +214,14 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             result = Request.load(js)
         elif message_type == MessageType.MSG_RESPONSE.value:
             result = Response.load(js)
+            ct = kwargs.get('content_type', '')
+            if ct == 'application/x-exception':
+                result.exception = RPCException('', type=kwargs.get('msg_type'))
         else:
             raise Exception(f'Unknown message type received {message_type}')
-        if 'correlation_id' in kwargs:
-            result.correlation_id = kwargs['correlation_id']
-        if 'headers' in kwargs:
-            result.headers = kwargs['headers']
-        if 'app_id' in kwargs:
-            result.app_id = kwargs['app_id']
-
+        result.correlation_id = kwargs.get('correlation_id')
+        result.headers = kwargs.get('headers', {})
+        result.app_id = kwargs.get('app_id')
 
     async def _message_received(self, instance: ConnectionBase, msg: str, *args, **kwargs):
         """Callback on incoming message from transport
@@ -250,7 +249,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             if loaded_msg.message_type == MessageType.MSG_REQUEST:
                 await self._recv_response(
                     Response(
-                        exception=RPCException(f'Request not delivered. correlation_id: {loaded_msg.correlation_id}'),
+                        exception=RPCDeliveryFailed(f'Request not delivered. correlation_id: {loaded_msg.correlation_id}'),
                         correlation_id=loaded_msg.correlation_id,
                     )
                 )
@@ -305,7 +304,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         except RPCException as e:
             exception = e
         except Exception as e:
-            exception = RPCException(message=str(e), traceback=traceback.format_exc())
+            exception = RPCException(message=str(e), type=e.__class__.__name__, traceback=traceback.format_exc())
 
         if request.response_required:
             if exception:
