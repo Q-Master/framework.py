@@ -8,7 +8,7 @@ from uuid import uuid4
 from packets import json
 from .decorator import rpc_methods
 from ..aio import check_is_async
-from .types import MessageType, Request, Response, RPCSenderStopped, WrongConsumer, RPCDispatcherStopped, RPCException, NotToHandle
+from .types import MessageType, Request, Response, RPCSenderStopped, WrongConsumer, RPCDispatcherStopped, RPCException, NotToHandle, ResponseType
 from ..net.connection_base import ConnectionBase
 from ..log.log import get_logger
 
@@ -66,19 +66,16 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         """
         return filter(lambda f: not f.done(), chain(self.wait_response_futures.values(), self.receive_request_futures.values()))
 
-    async def send(self, request, *args, **kwargs):
-        await self.call(request, *args, response_required = True, **kwargs)
-
     async def call(
             self,
             request,
-            *args,
+            *request_args,
             response_required: bool = True,
             correlation_id: Union[None, str] = None,
             wait_timeout: Union[None, int, float] = None,
             headers: Union[None, Dict[str, Any]] = None,
             app_id: Union[None, str] = None,
-            **kwargs
+            **request_kwargs
     ) -> Any:
         """Call the remote method
 
@@ -87,8 +84,8 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             response_required (bool, optional): waiting for response or not. Defaults to True.
             correlation_id (Union[None, str], optional): id for request (auto if None). Defaults to None.
             wait_timeout (Union[None, int, float], optional): timeout to wait for response. Defaults to None.
-            args: any additional positional arguments for request.
-            kwargs: any additional named arguments for request.
+            request_args: any additional positional arguments for request.
+            request_kwargs: any additional named arguments for request.
 
         Raises:
             RPCSenderStopped: error if the rpc is stopped by the sender
@@ -103,9 +100,20 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         assert isinstance(correlation_id, str) or correlation_id is None, (correlation_id, type(correlation_id))
 
         correlation_id = correlation_id or self._next_request_id()
-        req = Request(message=request, correlation_id=correlation_id, response_required=response_required, headers=headers, app_id=app_id, args=args, kwargs=kwargs)
+        req = Request(
+            message=request, 
+            correlation_id=correlation_id, 
+            response_type=ResponseType.RESPONSE_TYPE_RESULT if response_required else ResponseType.RESPONSE_TYPE_NONE, 
+            headers=headers, 
+            app_id=app_id, 
+            args=request_args, 
+            kwargs=request_kwargs
+        )
 
-        self.log.debug(f'Sending RPC request correlation_id: {correlation_id}, need_response: {"True" if response_required else "False"}, request: {request}, args: {args}, kwargs: {kwargs}')
+        self.log.debug(
+            f'Sending RPC request correlation_id: {correlation_id}, need_response: {"True" if response_required else "False"}, '
+            'request: {request}, args: {request_args}, kwargs: {request_kwargs}'
+            )
         await self._write(req)
         self.log.debug(f'RPC request sent. correlation_id: {correlation_id}')
 
@@ -130,7 +138,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             self.log.debug(f'RPC completed. correlation_id: {correlation_id}')
             return result
 
-    async def stop(self, wait_timeout: Optional[int] = None):
+    async def stop(self, wait_timeout: Optional[int] = None) -> None:
         self.log.info('Stopping RPC')
         self.stopped = True
         fs = tuple(self.unclosed_futures)
@@ -242,7 +250,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             if loaded_msg.message_type == MessageType.MSG_REQUEST:
                 await self._recv_response(
                     Response(
-                        exception=f'Request not delivered. correlation_id: {loaded_msg.correlation_id}',
+                        exception=RPCException(f'Request not delivered. correlation_id: {loaded_msg.correlation_id}'),
                         correlation_id=loaded_msg.correlation_id,
                     )
                 )
@@ -299,16 +307,14 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         except Exception as e:
             exception = RPCException(message=str(e), traceback=traceback.format_exc())
 
-        if exception:
-            self.log.error(f'RPC function exception. correlation_id: {request.correlation_id}, exception: {exception}')
-            response = Response(exception=exception, correlation_id=request.correlation_id, app_id=request.app_id)
-            await self._write(response, *args, **kwargs)
-        elif request.response_required:
+        if request.response_required:
+            if exception:
+                self.log.error(f'RPC function exception. correlation_id: {request.correlation_id}, exception: {exception}')
             self.log.debug(f'Replying to RPC. correlation_id: {request.correlation_id}')
-            response = Response(result=result, exception=exception, correlation_id=request.correlation_id)
+            response = Response(result=result, exception=exception, correlation_id=request.correlation_id, app_id=request.app_id)
             await self._write(response, *args, **kwargs)
 
-    async def _write(self, msg: Request | Response, *args, **kwargs):
+    async def _write(self, msg: Request | Response, *args, **kwargs) -> None:
         """Send message to transport.
         Might be overloaded to process the message before sending
         """
@@ -332,7 +338,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
                 **kwargs
             )
         
-    async def _dispatch_request(self, request: Request):
+    async def _dispatch_request(self, request: Request) -> Any:
         """Dispatching the received request.
         Will call the corresponding function. Might be overloaded in children to implement own dispatching mechanisms.
 
@@ -355,7 +361,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         else:
             return method_impl(self.app, *request.args, request.correlation_id, request.app_id, request.headers, **request.kwargs)
 
-    async def _dispatch_response(self, future: asyncio.Future, response: Response):
+    async def _dispatch_response(self, future: asyncio.Future, response: Response) -> None:
         if response.exception:
             future.set_exception(response.exception)
         else:
