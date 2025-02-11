@@ -102,13 +102,13 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         correlation_id = correlation_id or self._next_request_id()
         req = Request(
             message=request, 
-            correlation_id=correlation_id, 
             response_type=ResponseType.RESPONSE_TYPE_RESULT if response_required else ResponseType.RESPONSE_TYPE_NONE, 
-            headers=headers, 
-            app_id=app_id, 
             rargs=request_args, 
             rkwargs=request_kwargs
         )
+        req.correlation_id = correlation_id
+        req.headers = headers
+        req.app_id = app_id
 
         self.log.debug(
             f'Sending RPC request correlation_id: {correlation_id}, need_response: {"True" if response_required else "False"}, '
@@ -247,12 +247,12 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         try:
             loaded_msg = self._load_message(msg, **kwargs)
             if loaded_msg.message_type == MessageType.MSG_REQUEST:
-                await self._recv_response(
-                    Response(
-                        exception=RPCDeliveryFailed(f'Request not delivered. correlation_id: {loaded_msg.correlation_id}'),
-                        correlation_id=loaded_msg.correlation_id,
-                    )
+                resp = Response(
+                    exception=RPCDeliveryFailed(f'Request not delivered. correlation_id: {loaded_msg.correlation_id}')
                 )
+                resp.correlation_id = loaded_msg.correlation_id
+                resp.app_id = loaded_msg.app_id
+                await self._recv_response(resp)
             elif loaded_msg.message_type == MessageType.MSG_RESPONSE:
                 self.log.error(f'Response not delivered. correlation_id: {loaded_msg.correlation_id}, msg: {loaded_msg.message}')
         except Exception as e:
@@ -283,11 +283,12 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         result = None
 
         if self.stopped and request.response_required:
-            await self._write(Response(
-                exception=RPCDispatcherStopped('RPC is closed'), 
-                correlation_id=request.correlation_id,
-                app_id=request.app_id
-            ), *args, **kwargs)
+            resp = Response(
+                exception=RPCDispatcherStopped('RPC is closed')
+            )
+            resp.correlation_id = request.correlation_id
+            resp.app_id = request.app_id
+            await self._write(resp, *args, **kwargs)
             return
 
         try:
@@ -310,7 +311,9 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             if exception:
                 self.log.error(f'RPC function exception. correlation_id: {request.correlation_id}, exception: {exception}')
             self.log.debug(f'Replying to RPC. correlation_id: {request.correlation_id}')
-            response = Response(result=result, exception=exception, correlation_id=request.correlation_id, app_id=request.app_id)
+            response = Response(result=result, exception=exception)
+            response.correlation_id = request.correlation_id
+            response.app_id = request.app_id
             await self._write(response, *args, **kwargs)
 
     async def _write(self, msg: Request | Response, *args, **kwargs) -> None:
