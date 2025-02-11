@@ -35,8 +35,8 @@ class Request(BaseMessage):
     message_type: MessageType = Field(message_type_t, override=True, default=MessageType.MSG_REQUEST)  # type: ignore
     message: Any = Field(any_t, required=True)  # type: ignore
     response_type: int = Field(response_type_t, required=True)  # type: ignore
-    args: List[Any] = Field(Array(any_t))  # type: ignore
-    kwargs: Dict[str, Any] = Field(Hash(string_t, any_t))  # type: ignore
+    rargs: List[Any] = Field(Array(any_t), 'args')  # type: ignore
+    rkwargs: Dict[str, Any] = Field(Hash(string_t, any_t), 'kwargs')  # type: ignore
 
     @property
     def response_required(self) -> bool:

@@ -106,8 +106,8 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             response_type=ResponseType.RESPONSE_TYPE_RESULT if response_required else ResponseType.RESPONSE_TYPE_NONE, 
             headers=headers, 
             app_id=app_id, 
-            args=request_args, 
-            kwargs=request_kwargs
+            rargs=request_args, 
+            rkwargs=request_kwargs
         )
 
         self.log.debug(
@@ -356,9 +356,9 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
 
         method_impl, _ = self.methods[request.message]
         if check_is_async(method_impl):
-            return await method_impl(self.app, *request.args, request.correlation_id, request.app_id, request.headers, **request.kwargs)
+            return await method_impl(self.app, *request.rargs, correlation_id=request.correlation_id, app_id=request.app_id, headers=request.headers, **request.rkwargs)
         else:
-            return method_impl(self.app, *request.args, request.correlation_id, request.app_id, request.headers, **request.kwargs)
+            return method_impl(self.app, *request.rargs, correlation_id=request.correlation_id, app_id=request.app_id, headers=request.headers, **request.rkwargs)
 
     async def _dispatch_response(self, future: asyncio.Future, response: Response) -> None:
         if response.exception:
