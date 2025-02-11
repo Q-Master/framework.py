@@ -320,7 +320,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         """Send message to transport.
         Might be overloaded to process the message before sending
         """
-        if msg.exception:
+        if isinstance(msg, Response) and msg.exception:
             await self.connection.write(
                 msg.exception.message, 
                 content_type='application/x-exception', 
