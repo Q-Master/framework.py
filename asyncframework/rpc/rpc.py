@@ -149,7 +149,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
                 for future in pending:
                     future.cancel()
         if self.connection.is_connected:
-            self.connection.close()
+            await self.connection.close()
         self.log.info('RPC stopped')
 
     async def _recv_request(
