@@ -222,6 +222,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         result.correlation_id = kwargs.get('correlation_id')
         result.headers = kwargs.get('headers', {})
         result.app_id = kwargs.get('app_id')
+        return result
 
     async def _message_received(self, instance: ConnectionBase, msg: str, *args, **kwargs):
         """Callback on incoming message from transport
