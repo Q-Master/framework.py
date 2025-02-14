@@ -101,7 +101,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
 
         correlation_id = correlation_id or self._next_request_id()
         req = Request(
-            message=request, 
+            method=request, 
             response_type=ResponseType.RESPONSE_TYPE_RESULT if response_required else ResponseType.RESPONSE_TYPE_NONE, 
             rargs=request_args, 
             rkwargs=request_kwargs
@@ -165,7 +165,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         def on_done(_):
             del self.receive_request_futures[request.correlation_id]
 
-        self.log.debug(f'Received the request. correlation_id: {request.correlation_id}, request: {request.message}')
+        self.log.debug(f'Received the request. correlation_id: {request.correlation_id}, request: {request.method}')
         if self.dont_receive:
             self.log.debug('Ignoring the request. dont_receive is True')
             return
@@ -254,7 +254,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
                 resp.app_id = loaded_msg.app_id
                 await self._recv_response(resp)
             elif loaded_msg.message_type == MessageType.MSG_RESPONSE:
-                self.log.error(f'Response not delivered. correlation_id: {loaded_msg.correlation_id}, msg: {loaded_msg.message}')
+                self.log.error(f'Response not delivered. correlation_id: {loaded_msg.correlation_id}, msg: {loaded_msg.method}')
         except Exception as e:
             self.log.error(f'Error parsing the message: {msg}, exception: {e}, traceback: {traceback.format_exc()}')
 
@@ -278,7 +278,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         Args:
             request (Request): incoming request
         """
-        self.log.debug(f'Request received. correlation_id: {request.correlation_id}, request: {request.message}')
+        self.log.debug(f'Request received. correlation_id: {request.correlation_id}, request: {request.method}')
         exception = None
         result = None
 
@@ -354,10 +354,10 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             Any: the result of a function
         """
         self.log.debug('Request %s', request)
-        if request.message not in self.methods:
-            raise WrongConsumer(f'Callable method for {request.message} is not registered')
+        if request.method not in self.methods:
+            raise WrongConsumer(f'Callable method for {request.method} is not registered')
 
-        method_impl, _ = self.methods[request.message]
+        method_impl, _ = self.methods[request.method]
         if check_is_async(method_impl):
             return await method_impl(self.app, *request.rargs, correlation_id=request.correlation_id, app_id=request.app_id, headers=request.headers, **request.rkwargs)
         else:
