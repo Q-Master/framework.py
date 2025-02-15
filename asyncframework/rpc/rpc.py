@@ -216,7 +216,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             result = Response.load(js)
             ct = kwargs.get('content_type', '')
             if ct == 'application/x-exception':
-                result.exception = RPCException('', type=kwargs.get('msg_type'))
+                result.exception = RPCException(result.result, type=kwargs.get('msg_type'))
         else:
             raise Exception(f'Unknown message type received {message_type}')
         result.correlation_id = kwargs.get('correlation_id')
