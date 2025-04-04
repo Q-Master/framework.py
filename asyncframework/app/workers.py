@@ -45,6 +45,7 @@ class Worker(Service):
     async def __work(self, ioloop, *args, **kwargs):
         await self.start(ioloop, *args, **kwargs)
         await self.run(*args, **kwargs)
+        await self._stop()
 
 
 class Manager(Service):

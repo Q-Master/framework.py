@@ -90,7 +90,8 @@ class Service(metaclass=ABCMeta):
                 await self.__run_future
 
     async def _stop(self):
-        await self.__stop__()
+        if self._started:
+            await self.__stop__()
         self._started = False
         del self._stop_waiter
 
