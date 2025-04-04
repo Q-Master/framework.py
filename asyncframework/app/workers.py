@@ -56,6 +56,7 @@ class Manager(Service):
     _sleep_time: float
     _manager_type: ManagerTypes = ManagerTypes.RESTART
     _workers_list: List[Process] = []
+    _manager_run_future: Optional[asyncio.Future] = None
     wargs: List[Any] = []
     wkwargs: Dict[Any, Any] = {}
     __workers_run_future: Optional[asyncio.Future] = None
@@ -76,6 +77,7 @@ class Manager(Service):
         self.wargs = []
         self.wkwargs = {}
         self.__workers_run_future = None
+        self._manager_run_future = None
 
     def create_worker(self):
         if self._manager_type != ManagerTypes.NO_START:
@@ -93,6 +95,7 @@ class Manager(Service):
         if self._manager_type != ManagerTypes.NO_START:
             for _ in range(self._workers_count):
                 self.__start_worker()
+        self._manager_run_future = self.run()
 
     async def __body__(self):
         """Manager's `__body__` is used to check workers aliveness."""
