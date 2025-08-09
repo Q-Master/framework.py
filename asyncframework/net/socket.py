@@ -4,7 +4,7 @@ import socket
 import asyncio
 import traceback
 from ssl import SSLContext
-from .server_base import ServerBase
+from .server_base import ServerBase, FABRIC_TYPE
 from .connection_base import ConnectionBase
 from ..log.log import get_logger
 
@@ -65,8 +65,8 @@ class SocketConnection(ConnectionBase):
         """
         super().__init__(*args, **kwargs)
         self.__delimiter = delimiter
-        self.__reader = None
-        self.__writer = None
+        self.__reader: Optional[asyncio.StreamReader] = None
+        self.__writer: Optional[asyncio.StreamWriter] = None
         self.__consumer_task = None
         self.__connection_host = None
         self.__connection_port = None
@@ -113,7 +113,7 @@ class SocketConnection(ConnectionBase):
             reader (asyncio.StreamReader): existing `StreamReader`
             writer (asyncio.StreamWriter): existing `StreamWriter`
         """
-        super().connect(*args, **kwargs)
+        await super().connect(*args, **kwargs)
         self.__reader = reader
         self.__writer = writer
         ei = self.__writer.get_extra_info('peername')
@@ -134,10 +134,11 @@ class SocketConnection(ConnectionBase):
         _, writer, self.__reader, self.__writer = self.__reader, self.__writer, None, None
         if self.__consumer_task and not self.__consumer_task.done():
             self.__consumer_task.cancel()
-        writer.close()
-        if writer.is_closing() and not is_lost:
-            await writer.wait_closed()
-        super().close()
+        if writer:
+            writer.close()
+            if writer.is_closing() and not is_lost:
+                await writer.wait_closed()
+        await super().close()
         if not is_lost:
             self.log.info(f'Connection to {self.__connection_host}:{self.__connection_port} is closed')
         self.__connection_host = None
@@ -192,12 +193,13 @@ class SocketConnection(ConnectionBase):
         """Pause the connection
         """
         if not self.__pause_future or self.__pause_future.done():
-            self.__pause_future = asyncio.Future
+            self.__pause_future = asyncio.Future()
     
     def resume(self):
         """Resume the connection
         """
-        self.__pause_future.set_result(None)
+        if self.__pause_future:
+            self.__pause_future.set_result(None)
 
 
 class SocketServer(ServerBase):
@@ -218,7 +220,7 @@ class SocketServer(ServerBase):
     _server: Optional[asyncio.AbstractServer] = None
 
     def __init__(
-        self, connection_fabric: Callable[[], SocketConnection], *args, 
+        self, connection_fabric: FABRIC_TYPE, *args, 
         host: Optional[str] = None, port: Optional[int] = None, limit: int = _DEFAULT_LIMIT, 
         family = socket.AF_UNSPEC, flags = socket.AI_PASSIVE, sock: Optional[socket.socket] = None, backlog = 100, reuse_address: Optional[bool] = None, reuse_port: Optional[bool] = None,
         ssl: Optional[SSLContext] = None, ssl_handshake_timeout: Optional[int] = None, **kwargs):
@@ -265,6 +267,8 @@ class SocketServer(ServerBase):
         await self._server.start_serving()  # type: ignore
 
     async def __stop__(self, *args):
-        self._server.close()
+        if self._server:
+            self._server.close()
         await super().__stop__(*args)
-        await self._server.wait_closed()
+        if self._server:
+            await self._server.wait_closed()

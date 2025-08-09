@@ -9,5 +9,5 @@ _VT = TypeVar("_VT")
 class DictWithDefault(Dict[_KT, _VT]):
     default: _VT | None = None
 
-    def __missing__(self, _) -> _VT:
+    def __missing__(self, _) -> _VT | None:
         return self.default

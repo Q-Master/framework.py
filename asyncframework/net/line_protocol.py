@@ -12,7 +12,7 @@ class LineProtocol(asyncio.Protocol, metaclass=ABCMeta):
     delimiter: bytes = b'\n'
     transport: Optional[asyncio.Transport] = None
 
-    def connection_made(self, transport):
+    def connection_made(self, transport: asyncio.Transport):
         super().connection_made(transport)
         self.transport = transport
 

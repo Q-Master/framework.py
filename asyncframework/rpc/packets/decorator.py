@@ -17,6 +17,7 @@ def rpc_packet(packet_cls: Type[PacketBase], methods = rpc_methods):
     """
     def decorator(method: Callable):
         set_if_async(method)
-        methods[f'{packet_cls.__packet_id__}'] = method, packet_cls
+        if 'packet_id' in packet_cls.fields_names():
+            methods[f'{packet_cls.packet_id.info.default}'] = method, packet_cls # type: ignore # if packet_id is in fields names it will be here
         return method
     return decorator

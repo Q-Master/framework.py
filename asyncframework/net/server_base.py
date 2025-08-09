@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import asyncio
-from typing import List, Any, Callable, Type, Optional
+from typing import List, Callable, Coroutine, Any, Awaitable
 from ..log.log import get_logger
 from ..app.service import Service
 from ..aio.is_async import is_async
@@ -10,14 +10,17 @@ from .connection_base import ConnectionBase
 __all__ = ['ServerBase']
 
 
+FABRIC_TYPE = Callable[[], ConnectionBase] | Callable[[], Awaitable[ConnectionBase]]
+
+
 class ServerBase(Service):
     """Base class for all servers
     """
     log = get_logger('BaseServer')
-    connection_fabric: Callable[[], ConnectionBase]
+    connection_fabric: FABRIC_TYPE
     client_pool: List[ConnectionBase] = []
 
-    def __init__(self, connection_fabric: Callable[[], ConnectionBase], *args, **kwargs) -> None:
+    def __init__(self, connection_fabric: FABRIC_TYPE, *args, **kwargs) -> None:
         """Constructor
 
         Args:
@@ -30,13 +33,13 @@ class ServerBase(Service):
     async def on_client_connected(self, *args, **kwargs):
         """Default callback to call on client connection event
         """
-        if is_async(self.connection_fabric):
-            client = await self.connection_fabric()
-        else:
-            client = self.connection_fabric()
+        client = self.connection_fabric()
+        if not isinstance(client, ConnectionBase):
+            client = await client
         await client.connect(*args, **kwargs)
         self.client_pool.append(client)
-        client.on_close_future.add_done_callback(self._on_close)
+        if client.on_close_future:
+            client.on_close_future.add_done_callback(self._on_close)
         asyncio.ensure_future(self.on_accepted(client))
 
     async def __stop__(self):

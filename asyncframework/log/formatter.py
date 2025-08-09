@@ -1,5 +1,5 @@
 # -*- coding:utf-8 -*-
-from typing import Tuple, Any, Mapping, Sequence
+from typing import Tuple, Any, Mapping, Sequence, MutableMapping, Optional
 from itertools import chain
 import logging
 
@@ -15,10 +15,10 @@ class LogFormatter(logging.Formatter):
         super().__init__(fmt, datefmt)
 
     def format(self, record):
-        if 'tags' not in record.__dict__:
-            record.tags = '{}'
+        if hasattr(record, 'tags'):
+            record.tags = str(record.tags) # type: ignore
         else:
-            record.tags = str(record.tags)
+            record.tags = '{}'
         return super().format(record)
 
 
@@ -53,16 +53,17 @@ def _to_tag_dict(__value: Mapping) -> 'TagDict':
 
 class LoggerTaggingAdapter(logging.LoggerAdapter):
 
-    def __init__(self, logger, extra = None) -> None:
+    def __init__(self, logger, extra: Optional[MutableMapping[str, Any]] = None) -> None:
         if isinstance(logger, LoggerTaggingAdapter):
             logger, self.tags = logger.logger, logger.tags.copy()
         else:
             self.tags = TagDict()
-        super().__init__(logger, extra if extra is not None else {})
+        super().__init__(logger)
+        self.extra = extra or {}
         self.extra['tags'] = self.tags
         
-    def process(self, msg, kwargs) -> Tuple[str, dict]:
-        extra: dict = kwargs.setdefault('extra', self.extra)
+    def process(self, msg, kwargs) -> Tuple[str, MutableMapping[str, Any]]:
+        extra: MutableMapping[str, Any] = kwargs.setdefault('extra', self.extra)
         if extra is not self.extra:
             tags: dict = extra.setdefault('tags', self.tags)
             if tags is not self.tags:

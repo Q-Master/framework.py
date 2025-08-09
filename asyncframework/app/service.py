@@ -18,11 +18,11 @@ class Service(metaclass=ABCMeta):
     _stopping: bool
     _stop_waiter: Optional[asyncio.Future]
     __run_future: Optional[asyncio.Future]
-    __ioloop: Optional[asyncio.AbstractEventLoop]
+    __ioloop: asyncio.AbstractEventLoop
     __linear: bool
 
     @property
-    def ioloop(self) -> Optional[asyncio.AbstractEventLoop]:
+    def ioloop(self) -> asyncio.AbstractEventLoop:
         return self.__ioloop
 
     def __init__(self, *args, linear = False, **kwargs) -> None:
@@ -36,7 +36,6 @@ class Service(metaclass=ABCMeta):
         self._stopping = False
         self._stop_waiter = None
         self.__run_future = None
-        self.__ioloop = None
         self.__linear = linear
 
     async def start(self, ioloop: Optional[asyncio.AbstractEventLoop] = None, *args, **kwargs):

@@ -49,7 +49,7 @@ class TimersService(Service):
     
     async def __stop__(self):
         self.log.debug('Stopping timers service')
-        for timer, future in self.__timers:
+        for timer, future in self.__timers.items():
             if not future.done():
                 self.log.info(f'Cancelling timer {timer.id}')
                 future.cancel()

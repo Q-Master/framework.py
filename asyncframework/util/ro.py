@@ -1,26 +1,29 @@
 # -*- coding:utf-8 -*-
-from typing import Hashable
+from typing import TypeVar, Generic, cast
 from datetime import time, datetime, timedelta
 from types import MethodType, BuiltinMethodType, FunctionType
 
 
-class ReadOnly():
-    __wrapped = None
+Proxied = TypeVar('Proxied')
+
+
+class ReadOnly(Generic[Proxied]):
+    __wrapped: Proxied
 
     @classmethod
-    def make_ro(cls, obj):
-        if not isinstance(obj, (type(None), int, float, complex, bool, str, tuple, time, timedelta, datetime)):
-            return cls(obj)
-        return obj
+    def make_ro(cls, obj: Proxied) -> Proxied:
+        if isinstance(obj, (int, float, complex, bool, str, tuple, time, timedelta, datetime)):
+            return cast(Proxied, obj)
+        return cast(Proxied, cls(obj))
 
     @staticmethod
     def __readonly(*args, **kwargs):
         raise RuntimeError('This is the read only object')
 
-    def __init__(self, wrapped):
+    def __init__(self, wrapped: Proxied) -> None:
         super().__setattr__('__wrapped', wrapped)
 
-    def __getattr__(self, attr: str):
+    def __getattr__(self, attr: str) -> MethodType | BuiltinMethodType | FunctionType | Proxied | None:
         wrapped = super().__getattribute__('__wrapped')
         value = getattr(wrapped, attr)
         if isinstance(value, (MethodType, BuiltinMethodType, FunctionType)):
@@ -45,11 +48,11 @@ class ReadOnly():
         result = wrapped.get(item, default)
         return ReadOnly.make_ro(result)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         wrapped = super().__getattribute__('__wrapped')
         return repr(wrapped)
 
-    def __str__(self):
+    def __str__(self) -> str:
         wrapped = super().__getattribute__('__wrapped')
         return str(wrapped)
 
@@ -57,17 +60,17 @@ class ReadOnly():
         wrapped = super().__getattribute__('__wrapped')
         return iter(wrapped)
 
-    def __len__(self):
+    def __len__(self) -> int | bool:
         wrapped = super().__getattribute__('__wrapped')
         try:
             return len(wrapped)
         except TypeError:
             return bool(wrapped)
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         return super().__getattribute__('__wrapped') == other
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         wrapped = super().__getattribute__('__wrapped')
         try:
             return hash(wrapped)
@@ -75,7 +78,7 @@ class ReadOnly():
             return hash(str(wrapped))
 
     @property
-    def __class__(self):
+    def __class__(self) -> type[Proxied]:
         return super().__getattribute__('__wrapped').__class__
 
     @__class__.setter
@@ -86,4 +89,3 @@ class ReadOnly():
     __setitem__ = __readonly
     __delattr__ = __readonly
     __delitem__ = __readonly
-

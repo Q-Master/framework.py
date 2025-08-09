@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 import os
-from typing import Optional, Union
-from packets import Packet, TablePacket, FieldBase
+from typing import Optional, Union, cast
+from packets import Packet, TablePacket
 from packets._packetbase import PacketMeta
 from packets import json
 from ...log import log
@@ -80,10 +80,9 @@ class ConfigProtocolMthds(metaclass=ConfigProtocolMeta):
     def __repr__(self):
         return f'<{self.__filename__}>'
 
+    
     @classmethod
-    def load_cfg(cls, filename = None):
-        if not cls.__filename__ and not filename:
-            raise RuntimeError(f'No config file for {cls.__class__.__name__}')
+    def _load_data(cls, filename: Optional[str] = None) -> dict:
         if filename:
             if isinstance(cls.__filename__, list):
                 cls.__filename__.append(filename)
@@ -93,24 +92,16 @@ class ConfigProtocolMthds(metaclass=ConfigProtocolMeta):
                 cls.__filename__.add(filename)
             else:
                 cls.__filename__ = [cls.__filename__, filename]
-
-        data = cls._load_data(cls.__filename__)
-        module = cls.load(data)
-        module._reload_complete()
-        return ReadOnly(module)
-
-    @classmethod
-    def _load_data(cls, fname):
         cfg_data = {}
-        if not fname:
-            raise RuntimeError(f'No config file for {cls.__name__}')
-        if isinstance(fname, (list, tuple, set)):
-            for fn in fname:
+        if not cls.__filename__:
+            raise RuntimeError(f'No config file for {cls.__class__.__name__}')
+        if isinstance(cls.__filename__, (list, tuple, set)):
+            for fn in cls.__filename__:
                 with open(fn, 'r') as f:
                     rd = json.load(f)
                     merge_dicts(cfg_data, rd)
         else:
-            with open(fname) as f:
+            with open(cls.__filename__) as f:
                 cfg_data = json.load(f)
         return cfg_data
 
@@ -126,8 +117,20 @@ class ConfigProtocolMthds(metaclass=ConfigProtocolMeta):
 
 
 class ConfigProtocolBase(ConfigProtocolMthds, _ConfigProtocolBase):
-    pass
+    @classmethod
+    def load_cfg(cls, filename = None):
+        data = cls._load_data(filename)
+        module = cls.load(data)
+        module._reload_complete()
+        return ReadOnly(module)
+
 
 
 class ConfigTableProtocolBase(ConfigProtocolMthds, _ConfigTableProtocolBase):
-    pass
+    @classmethod
+    def load_cfg(cls, filename = None):
+        data = cls._load_data(filename)
+        module = cls.load(data)
+        module._reload_complete()
+        return ReadOnly(module)
+

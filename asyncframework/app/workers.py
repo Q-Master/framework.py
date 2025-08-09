@@ -28,7 +28,7 @@ class ManagerTypes(Enum):
 
 class Worker(Service):
     """Worker parent class."""
-    def __init__(self, *args, linear=True, **kwargs):
+    def __init__(self, *args, linear=False, **kwargs):
         super().__init__(*args, linear=linear, **kwargs)
 
     def __call__(self, *args, **kwargs):
@@ -122,7 +122,8 @@ class Manager(Service):
         for process in self._workers_list:
             self.log.info(f'Killing worker {process.pid}')
             process.terminate()
-        await self.__workers_run_future
+        if self.__workers_run_future:
+            await self.__workers_run_future
         await self.__stop_manager__()
 
     def __start_worker(self):
@@ -132,7 +133,7 @@ class Manager(Service):
             Process: the worker process descriptor
         """ 
         if self._manager_type == ManagerTypes.NO_START and len(self._workers_list) >= self._workers_count:
-            self.log.warn(f'Cant start any more workers ({self._workers_count})')
+            self.log.warning(f'Cant start any more workers ({self._workers_count})')
             return None
         self.log.info('Starting worker')
         worker = self.__new_worker__()
@@ -154,7 +155,7 @@ class Manager(Service):
         """        
         if not self._stopping:
             if self._manager_type == ManagerTypes.RESTART:
-                self.log.warn(u'Worker process stopped with exitcode: %s, restarting', process.exitcode)
+                self.log.warning(u'Worker process stopped with exitcode: %s, restarting', process.exitcode)
                 self.__start_worker()
             elif process.exitcode is None or process.exitcode <= 0:
                 self.log.error(u'Worker died with exitcode: %s', process.exitcode)

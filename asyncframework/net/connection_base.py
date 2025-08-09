@@ -48,13 +48,13 @@ class ConnectionBase(metaclass=ABCMeta):
         if callable(on_message_returned):
             self.__on_message_returned = on_message_returned
 
-    def connect(self, *args, **kwargs):
+    async def connect(self, *args, **kwargs):
         """Start connecting
         """
         if not self.on_close_future or self.on_close_future.done():
             self.on_close_future = asyncio.Future()
 
-    def close(self, *args, **kwargs):
+    async def close(self, *args, **kwargs):
         """Disconnect
         """
         if self.on_close_future and not self.on_close_future.done():

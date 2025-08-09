@@ -40,16 +40,16 @@ def set_handler(handler: logging.Handler):
 
 
 def init_logging(
-        stdout: bool = True,
-        log_filename: Optional[str] = None,
-        syslog: bool = False,
-        syslog_host: str = 'localhost',
-        syslog_port: int = 514,
-        log_name: Optional[str] = None,
-        log_level: str = 'DEBUG',
-        log_levels: Optional[dict] = None,
-        log_rotated_amount: int = 1,
-        formatter: Optional[logging.Formatter] = None
+    stdout: bool = True,
+    log_filename: Optional[str] = None,
+    syslog: bool = False,
+    syslog_host: Optional[str] = 'localhost',
+    syslog_port: Optional[int] = 514,
+    log_name: Optional[str] = None,
+    log_level: str = 'DEBUG',
+    log_levels: Optional[dict] = None,
+    log_rotated_amount: int = 1,
+    formatter: Optional[logging.Formatter] = None
 ):
     """Initialize logging
 
@@ -145,4 +145,4 @@ def change_all_logger_names(name: str):
     logger_dict = logging.Logger.manager.loggerDict
     for v in logger_dict.values():
         if hasattr(v, 'name'):
-            v.name = name
+            v.name = name # type: ignore

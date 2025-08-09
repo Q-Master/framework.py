@@ -1,6 +1,7 @@
 # coding=utf-8
 import asyncio
-from typing import Callable, Union
+from typing import Callable, Union, Awaitable
+from types import MethodType, BuiltinMethodType, FunctionType
 
 
 __all__ = ['is_async', 'IS_ASYNC_ATTR', 'check_is_async', 'set_if_async']
@@ -10,7 +11,7 @@ __all__ = ['is_async', 'IS_ASYNC_ATTR', 'check_is_async', 'set_if_async']
 IS_ASYNC_ATTR: str = '__is_async'
 
 
-def is_async(impl: Union[Callable, asyncio.Future]) -> bool:
+def is_async(impl: Union[Callable, asyncio.Future, Awaitable]) -> bool:
     """Check if `impl` is async or not
 
     Args:
@@ -19,7 +20,10 @@ def is_async(impl: Union[Callable, asyncio.Future]) -> bool:
     Returns:
         bool: True if async, else False
     """    
-    return asyncio.iscoroutinefunction(impl) or isinstance(impl, asyncio.Future)
+    if isinstance(impl, (MethodType, BuiltinMethodType, FunctionType)):
+        return asyncio.iscoroutinefunction(impl)
+    else:
+        return isinstance(impl, asyncio.Future)
 
 
 def check_is_async(method):

@@ -71,10 +71,10 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             request,
             *request_args,
             response_required: bool = True,
-            correlation_id: Union[None, str] = None,
-            wait_timeout: Union[None, int, float] = None,
-            headers: Union[None, Dict[str, Any]] = None,
-            app_id: Union[None, str] = None,
+            correlation_id: Optional[str] = None,
+            wait_timeout: Optional[Union[int, float]] = None,
+            headers: Optional[Dict[str, Any]] = None,
+            app_id: Optional[str] = None,
             **request_kwargs
     ) -> Any:
         """Call the remote method
@@ -82,8 +82,10 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         Args:
             request (Any): serializable (method name or packet)
             response_required (bool, optional): waiting for response or not. Defaults to True.
-            correlation_id (Union[None, str], optional): id for request (auto if None). Defaults to None.
-            wait_timeout (Union[None, int, float], optional): timeout to wait for response. Defaults to None.
+            correlation_id (str, optional): id for request (auto if None). Defaults to None.
+            wait_timeout (int | float, optional): timeout to wait for response. Defaults to None.
+            headers (Dict[str, Any], optional): headers for the request. Defaults to None
+            app_id (str, optional): application ID for request. Defaults to None
             request_args: any additional positional arguments for request.
             request_kwargs: any additional named arguments for request.
 
@@ -107,8 +109,8 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             rkwargs=request_kwargs
         )
         req.correlation_id = correlation_id
-        req.headers = headers
-        req.app_id = app_id
+        req.headers = headers or {}
+        req.app_id = app_id or ""
 
         self.log.debug(
             f'Sending RPC request correlation_id: {correlation_id}, need_response: {"True" if response_required else "False"}, '
@@ -219,9 +221,9 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
                 result.exception = RPCException(result.result, type=kwargs.get('msg_type'))
         else:
             raise Exception(f'Unknown message type received {message_type}')
-        result.correlation_id = kwargs.get('correlation_id')
+        result.correlation_id = kwargs.get('correlation_id', '')
         result.headers = kwargs.get('headers', {})
-        result.app_id = kwargs.get('app_id')
+        result.app_id = kwargs.get('app_id', '')
         return result
 
     async def _message_received(self, instance: ConnectionBase, msg: str, *args, **kwargs):
@@ -232,10 +234,12 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         """
         try:
             loaded_msg = self._load_message(msg, **kwargs)
-            if loaded_msg.message_type == MessageType.MSG_REQUEST:
+            if isinstance(loaded_msg, Request):
                 await self._recv_request(loaded_msg, *args, **kwargs)
-            elif loaded_msg.message_type == MessageType.MSG_RESPONSE:
+            elif isinstance(loaded_msg, Response):
                 await self._recv_response(loaded_msg, *args, **kwargs)
+            else:
+                self.log.error(f'Unknown message type: {msg} ({type(loaded_msg)})')
         except Exception as e:
             self.log.error(f'Error parsing message: {msg}, exception: {e}, traceback: {traceback.format_exc()}')
 
@@ -247,15 +251,17 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         """ 
         try:
             loaded_msg = self._load_message(msg, **kwargs)
-            if loaded_msg.message_type == MessageType.MSG_REQUEST:
+            if isinstance(loaded_msg, Request):
                 resp = Response(
                     exception=RPCDeliveryFailed(f'Request not delivered. correlation_id: {loaded_msg.correlation_id}')
                 )
                 resp.correlation_id = loaded_msg.correlation_id
                 resp.app_id = loaded_msg.app_id
                 await self._recv_response(resp)
-            elif loaded_msg.message_type == MessageType.MSG_RESPONSE:
-                self.log.error(f'Response not delivered. correlation_id: {loaded_msg.correlation_id}, msg: {loaded_msg.method}')
+            elif isinstance(loaded_msg, Response):
+                self.log.error(f'Response not delivered. correlation_id: {loaded_msg.correlation_id}, msg: {msg}')
+            else:
+                self.log.error(f'Unknown message type: {msg} ({type(loaded_msg)})')
         except Exception as e:
             self.log.error(f'Error parsing the message: {msg}, exception: {e}, traceback: {traceback.format_exc()}')
 
@@ -294,10 +300,10 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
 
         try:
             result = await self._dispatch_request(request)
-            self.log.debug(f'RPC is complete. correlation_id: {request.correlation_id}, result: {result}', request.correlation_id, result)
+            self.log.debug(f'RPC is complete. correlation_id: {request.correlation_id}, result: {result}')
         except WrongConsumer as e:
             if self.raise_on_unregistered:
-                exception = RPCException(message=str(e), correlation_id=request.correlation_id, app_id=request.app_id)
+                exception = RPCException(message=f'Exception: {e}, correlation_id: {request.correlation_id}, app_id: {request.app_id}', type=e.__class__.__name__, traceback=traceback.format_exc())
             else:
                 self.log.error(f'RPC request cant be processed. No dispatcher for it: {e}')
                 return
@@ -327,7 +333,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
                 content_type='application/x-exception', 
                 correlation_id=msg.correlation_id, 
                 app_id=msg.app_id,
-                type=msg.exception.type
+                type=msg.exception.type,
                 **kwargs
             )
         else:
@@ -337,7 +343,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
                 headers=msg.headers, 
                 correlation_id=msg.correlation_id, 
                 app_id=msg.app_id,
-                type='request' if isinstance(msg, Request) else 'response'
+                type='request' if isinstance(msg, Request) else 'response',
                 **kwargs
             )
         

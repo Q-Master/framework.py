@@ -5,12 +5,12 @@ from packets import Packet, Field, string_t, Enumeration, any_t, Array, Hash, in
 from .rpc_exception import rpc_exception_t, RPCException
 
 
-__all__ = ['MessageType', 'Request', 'Response', 'BaseMessage', 'ResponseType']
+__all__ = ['MessageType', 'Request', 'Response', 'BaseMessage', 'ResponseType', 'MethodReply']
 
 
 class MessageType(Enum):
-    MSG_REQUEST: int = 0
-    MSG_RESPONSE: int = 1
+    MSG_REQUEST = 0
+    MSG_RESPONSE = 1
 
 
 message_type_t = Enumeration(MessageType)
@@ -47,3 +47,12 @@ class Response(BaseMessage):
     message_type: MessageType = Field(message_type_t, override=True, default=MessageType.MSG_RESPONSE)  # type: ignore
     result: Any = Field(any_t)  # type: ignore
     exception: RPCException = Field(rpc_exception_t)  # type: ignore
+
+
+class MethodReply():
+    result: Any
+    headers: Dict[str, Any]
+
+    def __init__(self, result: Any, headers: Dict[str, Any] = {}) -> None:
+        self.result = result
+        self.headers = headers

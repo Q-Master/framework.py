@@ -36,10 +36,6 @@ class Config(ConfigProtocolBase):
     log_date_format: str = Field(string_t, default='%Y-%m-%d %H:%M:%S')   # type: ignore    
     log_rotated_amount: int = Field(int_t, default=1)  # type: ignore
 
-    def on_reconfigure_signal(self):
-        """Callback, which will be run on getting signal from `enable_reconfiguration_signal` (reread configuration) signal"""
-        pass
-
     def init_logging(self):
         """Initialize logging using the parameters from config file or defaults
         """
@@ -55,21 +51,3 @@ class Config(ConfigProtocolBase):
             log_rotated_amount=self.log_rotated_amount,
             formatter=LogFormatter(self.log_format if not self.syslog else self.log_format_rsyslog, self.log_date_format)
         )
-
-    def _on_reload_signal(self):
-        self.log.debug('Reloading configuration')
-        try:
-            self.reload()
-            self.on_reconfigure_signal()
-        except Exception as e:
-            self.log.error(f'Error reloading configuration {traceback.format_exc(e)}')
-            os.kill(os.getpid(), signal.SIGTERM)
-        self.log.info('Configuration reloaded successfully')
-
-    def enable_reconfiguration_signal(self, signal_no=signal.SIGUSR1):
-        """Call this to set the callback on reconfiguration signal
-
-        Args:
-            signal_no (signal.Signals, optional): the signal to set the reconfiguration callback on. Defaults to signal.SIGUSR1.
-        """        
-        signal.signal(signal_no, lambda *_: self._on_reload_signal())

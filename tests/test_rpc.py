@@ -5,8 +5,8 @@ from asyncframework.net import SocketConnection
 from asyncframework.net import SocketServer
 from asyncframework.rpc import RPC, rpc_method
 from asyncframework.rpc.packets import RPCPackets, rpc_packet
-from packets.packet import PacketWithID, Field
-from packets.processors import int_t, string_t
+from packets.packet import Field, Packet
+from packets.processors import int_t, string_t, int32_t
 
 
 @rpc_method()
@@ -16,16 +16,18 @@ def test(app, msg):
     return 'ok'
 
 
-class RPCPacketTestRequest(PacketWithID):
+class RPCPacketTestRequest(Packet):
+    packet_id: int = Field(int32_t, '_', default=1, override=True) # type: ignore
     query = Field(string_t, required=True)
 
 
-class RPCPacketTestReply(PacketWithID):
+class RPCPacketTestReply(Packet):
+    packet_id: int = Field(int32_t, '_', default=2, override=True) # type: ignore
     reply = Field(int_t, required=True)
 
 
 @rpc_packet(RPCPacketTestRequest)
-def packet_test(app, msg):
+def packet_test(app, msg, *args, **kwargs):
     app.assertEqual(msg.query, 'test')
     app.test_complete.set_result(True)
     return RPCPacketTestReply(reply=1)
