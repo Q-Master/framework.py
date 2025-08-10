@@ -17,10 +17,9 @@ def main(appCls, *args, **kwargs):
     set_process_name(appCls.__name__)
     app = appCls(*args, **kwargs)
     if uvloop_imported:
-        log.debug('UVLoop imported ok')
         ioloop = uvloop.new_event_loop()
-        asyncio.set_event_loop(ioloop)
     else:
-        ioloop = asyncio.get_event_loop()
+        ioloop = asyncio.new_event_loop()
+    asyncio.set_event_loop(ioloop)
     ioloop.run_until_complete(start(ioloop, app))
     ioloop.close()
