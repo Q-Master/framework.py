@@ -5,7 +5,7 @@ from asyncframework.net import SocketConnection
 from asyncframework.net import SocketServer
 from asyncframework.rpc import RPC, rpc_method
 from asyncframework.rpc.packets import RPCPackets, rpc_packet
-from packets.packet import Field, Packet
+from packets import Packet, makeField
 from packets.processors import int_t, string_t, int32_t
 
 
@@ -17,13 +17,13 @@ def test(app, msg):
 
 
 class RPCPacketTestRequest(Packet):
-    packet_id: int = Field(int32_t, '_', default=1, override=True) # type: ignore
-    query = Field(string_t, required=True)
+    packet_id: int = makeField(int32_t, '_', default=1, override=True)
+    query: str = makeField(string_t, required=True)
 
 
 class RPCPacketTestReply(Packet):
-    packet_id: int = Field(int32_t, '_', default=2, override=True) # type: ignore
-    reply = Field(int_t, required=True)
+    packet_id: int = makeField(int32_t, '_', default=2, override=True)
+    reply: int = makeField(int_t, required=True)
 
 
 @rpc_packet(RPCPacketTestRequest)
