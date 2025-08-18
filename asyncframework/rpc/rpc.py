@@ -218,7 +218,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             result = Response.load(js)
             ct = kwargs.get('content_type', '')
             if ct == 'application/x-exception':
-                result.exception = RPCException(result.result, type=kwargs.get('msg_type'))
+                result.exception = RPCException(f'{result.result}', type=kwargs.get('msg_type'))
         else:
             raise Exception(f'Unknown message type received {message_type}')
         result.correlation_id = kwargs.get('correlation_id', '')
@@ -366,9 +366,9 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
 
         method_impl, _ = self.methods[request.method]
         if check_is_async(method_impl):
-            return await method_impl(self.app, *request.rargs, correlation_id=request.correlation_id, app_id=request.app_id, headers=request.headers, **request.rkwargs)
+            return await method_impl(self.app, *(request.rargs or []), correlation_id=request.correlation_id, app_id=request.app_id, headers=request.headers, **(request.rkwargs or {}))
         else:
-            return method_impl(self.app, *request.rargs, correlation_id=request.correlation_id, app_id=request.app_id, headers=request.headers, **request.rkwargs)
+            return method_impl(self.app, *(request.rargs or []), correlation_id=request.correlation_id, app_id=request.app_id, headers=request.headers, **(request.rkwargs or {}))
 
     async def _dispatch_response(self, future: asyncio.Future, response: Response) -> None:
         if response.exception:

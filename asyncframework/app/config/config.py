@@ -1,40 +1,32 @@
 # -*- coding: utf-8 -*-
-import traceback
-import weakref
-import signal
-import os.path
 from typing import Dict, Optional
-from itertools import chain
 from platform import node
-from packets import Field, Packet
-from packets._packetbase import PacketMeta
-from packets import json
+from packets import makeField
 from packets.processors import Hash, log_level_t, int_t, string_t, bool_t
-from .base import ConfigProtocolBase, ConfigTableProtocolBase
+from .base import ConfigProtocolBase
 from ...log import log
 from ...log.formatter import LogFormatter
-from ...util.ro import ReadOnly
 
 
 __all__ = ['Config']
 
 
 class Config(ConfigProtocolBase):
-    pid_file: Optional[str] = Field(string_t)  # type: ignore
+    pid_file: Optional[str] = makeField(string_t)
 
     #logging options
-    stdout: bool = Field(bool_t, default=True)  # type: ignore
-    syslog: bool = Field(bool_t, default=False)  # type: ignore
-    syslog_host: Optional[str] = Field(string_t)  # type: ignore
-    syslog_port: Optional[int] = Field(int_t)  # type: ignore
-    log_name: str = Field(string_t, default='')  # type: ignore
-    log_level: str = Field(log_level_t, default='debug')  # type: ignore
-    log_levels: Dict[str, int] = Field(Hash(string_t, log_level_t), default={})  # type: ignore
-    log_filename: str = Field(string_t, default='')  # type: ignore
-    log_format: str = Field(string_t, default='%(asctime)s.%(msecs)03d %(name)s <%(levelname).1s> %(module)s:%(lineno)d] %(tags)s %(message)s')  # type: ignore
-    log_format_rsyslog: str = Field(string_t, default=node() + ' %(name)s:<%(levelname).1s> %(module)s:%(lineno)d] %(tags)s %(message)s')  # type: ignore
-    log_date_format: str = Field(string_t, default='%Y-%m-%d %H:%M:%S')   # type: ignore    
-    log_rotated_amount: int = Field(int_t, default=1)  # type: ignore
+    stdout: bool = makeField(bool_t, default=True)
+    syslog: bool = makeField(bool_t, default=False)
+    syslog_host: Optional[str] = makeField(string_t)
+    syslog_port: Optional[int] = makeField(int_t)
+    log_name: str = makeField(string_t, default='')
+    log_level: str = makeField(log_level_t, default='debug')
+    log_levels: Dict[str, int] = makeField(Hash(string_t, log_level_t), default={})
+    log_filename: str = makeField(string_t, default='')
+    log_format: str = makeField(string_t, default='%(asctime)s.%(msecs)03d %(name)s <%(levelname).1s> %(module)s:%(lineno)d] %(tags)s %(message)s')
+    log_format_rsyslog: str = makeField(string_t, default=node() + ' %(name)s:<%(levelname).1s> %(module)s:%(lineno)d] %(tags)s %(message)s')
+    log_date_format: str = makeField(string_t, default='%Y-%m-%d %H:%M:%S')     
+    log_rotated_amount: int = makeField(int_t, default=1)
 
     def init_logging(self):
         """Initialize logging using the parameters from config file or defaults
