@@ -1,0 +1,12 @@
+{
+  "recordwf1": {
+    "name": "record",
+    "number": 123,
+    "active": false
+  },
+  "recordwf2": {
+    "name": "record2",
+    "number": 256
+  },
+  "additional": true
+}

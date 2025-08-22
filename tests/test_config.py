@@ -18,6 +18,12 @@ class RecordsConfig(ConfigTableProtocolBase[Record]):
     __default_field__ = makeField(Record)
 
 
+class RecordsConfigWithField(ConfigTableProtocolBase[Record]):
+    __filename__ = 'records_with_field.json'
+    __default_field__ = makeField(Record)
+    additional: bool = makeField(bool_t, required=True)
+
+
 class SimpleConfig(ConfigProtocolBase):
     __filename__ = 'simple.json'
     record: Record = makeField(Record, required=True)
@@ -28,9 +34,14 @@ class TConfig(Config):
     records = RecordsConfig()
 
 
+class TConfig1(Config):
+    records = RecordsConfigWithField()
+
+
 class TestConfig(unittest.TestCase):
     def test_config(self):
         c1: TConfig = TConfig.load_cfg('dummy.json')
+        c2: TConfig1 = TConfig1.load_cfg('dummy.json')
         c3: SimpleConfig = SimpleConfig.load_cfg()
         self.assertEqual(len(c1.records), 3)
         self.assertIsNotNone(c1.records)
@@ -41,4 +52,10 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(c1.records.record2.number, 2)
         self.assertEqual(c1.records.record3.name, 'test3')
         self.assertEqual(c1.records.record3.number, 3)
+
+        self.assertEqual(c2.records.recordwf1.name, 'record')
+        self.assertEqual(c2.records.recordwf1.number, 123)
+        self.assertEqual(c2.records.recordwf2.name, 'record2')
+        self.assertEqual(c2.records.recordwf2.number, 256)
+        self.assertEqual(c2.records.additional, True)
         self.assertEqual(c3.test, None)

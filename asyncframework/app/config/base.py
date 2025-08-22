@@ -118,6 +118,11 @@ class ConfigProtocolMthds(metaclass=ConfigProtocolMeta):
 
 
 class ConfigProtocolBase(ConfigProtocolMthds, _ConfigProtocolBase):
+    def __init__(self, **kwargs) -> None:
+        if '__strict' in kwargs:
+            kwargs.pop('__strict')
+        super().__init__(__strict=False, **kwargs)
+    
     @classmethod
     def load_cfg(cls, filename: Optional[str] = None) -> Self:
         data = cls._load_data(filename)
@@ -128,6 +133,11 @@ class ConfigProtocolBase(ConfigProtocolMthds, _ConfigProtocolBase):
 
 
 class ConfigTableProtocolBase(ConfigProtocolMthds, _ConfigTableProtocolBase[_T]):
+    def __init__(self, **kwargs) -> None:
+        if '__strict' in kwargs:
+            kwargs.pop('__strict')
+        super().__init__(__strict=False, **kwargs)
+
     @classmethod
     def load_cfg(cls, filename: Optional[str] = None) -> Self:
         data = cls._load_data(filename)
