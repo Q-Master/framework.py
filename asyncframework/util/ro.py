@@ -1,5 +1,5 @@
 # -*- coding:utf-8 -*-
-from typing import TypeVar, Generic, cast
+from typing import TypeVar, Generic, cast, Union, Any
 from datetime import time, datetime, timedelta
 from types import MethodType, BuiltinMethodType, FunctionType
 
@@ -23,7 +23,7 @@ class ReadOnly(Generic[Proxied]):
     def __init__(self, wrapped: Proxied) -> None:
         super().__setattr__('__wrapped', wrapped)
 
-    def __getattr__(self, attr: str) -> MethodType | BuiltinMethodType | FunctionType | Proxied | None:
+    def __getattr__(self, attr: str) -> Union[Proxied, Any, None]:
         wrapped = super().__getattribute__('__wrapped')
         value = getattr(wrapped, attr)
         if isinstance(value, (MethodType, BuiltinMethodType, FunctionType)):
@@ -36,14 +36,14 @@ class ReadOnly(Generic[Proxied]):
         else:
             return ReadOnly.make_ro(value)
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: Union[str, slice]):
         wrapped = super().__getattribute__('__wrapped')
         if isinstance(item, slice):
             return ReadOnly.make_ro([ReadOnly.make_ro(element) for element in wrapped[item]])
         else:
             return ReadOnly.make_ro(wrapped[item])
 
-    def __get(self, item, default=None):
+    def __get(self, item: str, default=None):
         wrapped = super().__getattribute__('__wrapped')
         result = wrapped.get(item, default)
         return ReadOnly.make_ro(result)
@@ -67,7 +67,7 @@ class ReadOnly(Generic[Proxied]):
         except TypeError:
             return bool(wrapped)
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Proxied) -> bool:
         return super().__getattribute__('__wrapped') == other
 
     def __hash__(self) -> int:

@@ -1,7 +1,6 @@
 # -*- coding:utf-8 -*-
-import os
-from typing import Optional, Union, cast
-from packets import Packet, TablePacket
+from typing import Optional, Union, TypeVar, Self
+from packets import Packet, TablePacket, PacketBase
 from packets._packetbase import PacketMeta
 from packets import json
 from ...log import log
@@ -19,7 +18,9 @@ class _ConfigProtocolBase(Packet):
     pass
 
 
-class _ConfigTableProtocolBase(TablePacket):
+_T = TypeVar('_T', bound=PacketBase)
+
+class _ConfigTableProtocolBase(TablePacket[_T]):
     pass
 
 
@@ -54,7 +55,7 @@ class ConfigProtocolMeta(PacketMeta):
             if (isinstance(value, type) and issubclass(value, (_ConfigProtocolBase, _ConfigTableProtocolBase))) or \
                 isinstance(value, (_ConfigProtocolBase, _ConfigTableProtocolBase)):
                 assert attr not in config_readers, f'Reassignment of {attr}'
-                config_readers[attr] = value if isinstance(value, type) else type(value)
+                config_readers[attr] = value.__class__ if isinstance(value, (_ConfigProtocolBase, _ConfigTableProtocolBase)) else value
                 namespace.pop(attr)
                 slots.add(attr)
 
@@ -94,7 +95,7 @@ class ConfigProtocolMthds(metaclass=ConfigProtocolMeta):
                 cls.__filename__ = [cls.__filename__, filename]
         cfg_data = {}
         if not cls.__filename__:
-            raise RuntimeError(f'No config file for {cls.__class__.__name__}')
+            raise RuntimeError(f'No config file for {cls.__name__}')
         if isinstance(cls.__filename__, (list, tuple, set)):
             for fn in cls.__filename__:
                 with open(fn, 'r') as f:
@@ -118,19 +119,19 @@ class ConfigProtocolMthds(metaclass=ConfigProtocolMeta):
 
 class ConfigProtocolBase(ConfigProtocolMthds, _ConfigProtocolBase):
     @classmethod
-    def load_cfg(cls, filename = None):
+    def load_cfg(cls, filename: Optional[str] = None) -> Self:
         data = cls._load_data(filename)
         module = cls.load(data)
         module._reload_complete()
-        return ReadOnly(module)
+        return ReadOnly.make_ro(module)
 
 
 
-class ConfigTableProtocolBase(ConfigProtocolMthds, _ConfigTableProtocolBase):
+class ConfigTableProtocolBase(ConfigProtocolMthds, _ConfigTableProtocolBase[_T]):
     @classmethod
-    def load_cfg(cls, filename = None):
+    def load_cfg(cls, filename: Optional[str] = None) -> Self:
         data = cls._load_data(filename)
         module = cls.load(data)
         module._reload_complete()
-        return ReadOnly(module)
+        return ReadOnly.make_ro(module)
 

@@ -1,0 +1,16 @@
+{
+  "record1": {
+    "name": "test",
+    "number": 1,
+    "active": false
+  },
+  "record2": {
+    "name": "test2",
+    "number": 2
+  },
+  "record3": {
+    "name": "test3",
+    "number": 3,
+    "active": true
+  }
+}
