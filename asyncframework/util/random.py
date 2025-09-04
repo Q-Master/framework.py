@@ -1,5 +1,5 @@
 # -*- coding:utf-8 -*-
-from typing import Sequence, List, Any
+from typing import Sequence, List, Any, TypeVar
 from random import *
 from operator import add
 from functools import reduce
@@ -48,7 +48,10 @@ def get_distribution(probabilities: Sequence[float]) -> List[float]:
     return [reduce(add, probabilities[:i + 1]) for i in range(len(probabilities))]
 
 
-def roll_event_distribution(events: Sequence[Any], distribution: Sequence[float]) -> Any:
+T=TypeVar('T')
+
+
+def roll_event_distribution(events: Sequence[T], distribution: Sequence[float]) -> T:
     """Rolls a single event from events list using the distribution table
 
     Args:
@@ -61,7 +64,7 @@ def roll_event_distribution(events: Sequence[Any], distribution: Sequence[float]
     return events[bisect_left(distribution, _sys_random.random())]
 
 
-def roll_event_probabilities(events: Sequence[Any], probabilities: List[float]) -> Any:
+def roll_event_probabilities(events: Sequence[T], probabilities: List[float]) -> T:
     """Rolls a single event from events list using the probabilities table
 
     Args:
