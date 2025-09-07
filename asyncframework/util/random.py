@@ -48,6 +48,12 @@ def get_distribution(probabilities: Sequence[float]) -> List[float]:
     return [reduce(add, probabilities[:i + 1]) for i in range(len(probabilities))]
 
 
+def normalize_probabilities(probabilities: Sequence[float]) -> List[float]:
+    """Normalize the list of probabilities to make them summ to 1.0"""
+    coef = 1.0 / sum(probabilities)
+    return [p * coef for p in probabilities]
+
+
 T=TypeVar('T')
 
 
