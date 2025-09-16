@@ -1,5 +1,5 @@
 # -*- coding:utf-8 -*-
-from typing import Mapping, Optional, Any, Union, Iterator, TypeVar, Dict, List, Tuple, MutableSequence, Sequence
+from typing import Mapping, Optional, Any, Union, Iterator, TypeVar, Dict, List, Tuple, MutableSequence, Sequence, TypeAlias
 import itertools
 from _collections_abc import dict_keys, dict_items
 from collections import Counter
@@ -69,7 +69,9 @@ def diff(data1: Optional[_DT], data2: Optional[_DT]) -> Union[Dict[Any, Any], _D
     return d.curr if d is not None else d
 
 
-def diff_keys(data1: Union[PacketBase, dict], data2: Union[PacketBase, dict]) -> List[str]:
+DiffKeys: TypeAlias = Dict[str, Union[str, 'DiffKeys']]
+
+def diff_keys(data1: Union[PacketBase, dict], data2: Union[PacketBase, dict]) -> DiffKeys:
     """Generate a difference between two items (only dict and Packet supported)
 
     Args:
@@ -82,26 +84,29 @@ def diff_keys(data1: Union[PacketBase, dict], data2: Union[PacketBase, dict]) ->
     Returns:
         List[str]: list of fields, touched by changes in format a.b.c
     """
-    keys_diff = []
+    keys_diff = {}
     def iterate_fields(it: Union[Iterator[Tuple[str, Any]], dict_items]):
         for fn, fv1 in it:
             fv2 = data2.get(fn)
             if fv1 is None and fv2 is None:
                 continue
             elif fv1 is None or fv2 is None:
-                keys_diff.append(fn)
+                keys_diff[fn] = '1'
             elif isinstance(fv1, (PacketBase, dict)):
-                sub_list = diff_keys(fv1, fv2)
-                keys_diff.extend([f'{fn}.{sfn}' for sfn in sub_list])
+                sub_dict = diff_keys(fv1, fv2)
+                keys_diff[fn] = sub_dict
             elif fv1 != fv2:
-                keys_diff.append(fn)
+                keys_diff[fn] = '1'
     if isinstance(data1, PacketBase):
         assert isinstance(data2, PacketBase), (data2, type(data2))
 
     if data1 is data2:
         return keys_diff
-    elif data1 is None or data2 is None:
-        return FieldDiff(data1, data2)
+    elif data1 is None and data2 is not None:
+        for fn in data2.fields_names():
+            keys_diff[fn] = '1'
+    elif data1 is not None and data2 is None:
+        return keys_diff
     elif isinstance(data1, PacketBase):
         assert isinstance(data2, PacketBase), (data2, type(data2))
         iterate_fields(data1.packet_fields())

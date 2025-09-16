@@ -35,6 +35,6 @@ class TestPacketDiff(unittest.TestCase):
             pkt_diff = diff(pkt_snapshot, pkt)
             keys_diff = diff_keys(pkt_snapshot, pkt)
             self.assertIsInstance(pkt_diff, dict)
-            self.assertIsInstance(keys_diff, list)
+            self.assertIsInstance(keys_diff, dict)
             self.assertDictEqual(pkt_diff, {'a': 0, 'c': {'d': 8, 'e': 'test2', 'f': ['6']}}) # type: ignore
-            self.assertListEqual(keys_diff, ['a', 'c.d', 'c.e', 'c.f'])
+            self.assertDictEqual(keys_diff, {'a': '1', 'c': {'d': '1', 'e': '1', 'f': '1'}})
