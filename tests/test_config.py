@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 import unittest
 from typing import Optional
-from packets import Packet, Field, makeField
+from packets import Packet, makeField
 from packets.processors import string_t, int_t, bool_t
 from asyncframework.app.config import Config, ConfigTableProtocolBase, ConfigProtocolBase
 

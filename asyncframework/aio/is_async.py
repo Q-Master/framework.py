@@ -4,7 +4,7 @@ from typing import Callable, Union, Awaitable
 from types import MethodType, BuiltinMethodType, FunctionType
 
 
-__all__ = ['is_async', 'IS_ASYNC_ATTR', 'check_is_async', 'set_if_async']
+__all__ = ['is_async', 'IS_ASYNC_ATTR', 'check_is_async', 'set_if_async', 'set_async']
 
 
 # The attribute for methods which may be marked as async
@@ -30,6 +30,12 @@ def check_is_async(method):
     return hasattr(method, IS_ASYNC_ATTR)
 
 
-def set_if_async(method):
+def set_if_async(method) -> bool:
     if is_async(method):
-        setattr(method, IS_ASYNC_ATTR, True)
+        set_async(method)
+        return True
+    return False
+
+
+def set_async(method):
+    setattr(method, IS_ASYNC_ATTR, True)
