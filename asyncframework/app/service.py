@@ -92,7 +92,7 @@ class Service(metaclass=ABCMeta):
         if self._started:
             await self.__stop__()
         self._started = False
-        del self._stop_waiter
+        self._stop_waiter = None
 
     @abstractmethod
     async def __start__(self, *args, **kwargs):
