@@ -324,20 +324,16 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             response.app_id = request.app_id
             await self._write(response, *args, **kwargs)
 
-    async def _write(self, msg: Request | Response, *args, **kwargs) -> None:
+    async def _write(self, msg: Request | Response, *args, correlation_id: Optional[str] = None, app_id: Optional[str] = None, msg_type: Optional[str] = None, content_type: Optional[str] = None, **kwargs) -> None:
         """Send message to transport.
         Might be overloaded to process the message before sending
         """
-        corr_id = kwargs.pop('correlation_id') or msg.correlation_id
-        app_id = kwargs.pop('app_id') or msg.app_id
-        kwargs.pop('msg_type')
-        kwargs.pop('content_type')
         if isinstance(msg, Response) and msg.exception:
             await self.connection.write(
                 msg.exception.message, 
                 content_type='application/x-exception', 
-                correlation_id=corr_id, 
-                app_id=app_id,
+                correlation_id=correlation_id or msg.correlation_id, 
+                app_id=app_id or msg.app_id,
                 type=msg.exception.type,
                 **kwargs
             )
@@ -346,8 +342,8 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
                 msg.dumps(), *args, 
                 content_type='application/json', 
                 headers=msg.headers, 
-                correlation_id=corr_id, 
-                app_id=app_id,
+                correlation_id=correlation_id or msg.correlation_id, 
+                app_id=app_id or msg.app_id,
                 type='request' if isinstance(msg, Request) else 'response',
                 **kwargs
             )
