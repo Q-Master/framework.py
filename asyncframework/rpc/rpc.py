@@ -1,13 +1,13 @@
 # -*- coding:utf-8 -*-
+from typing import Union, Any, Dict, Optional, Iterable, TypeVar, Generic, Callable, Tuple
 import asyncio
 import traceback
-from typing import Union, Any, Dict, Optional, Iterable, TypeVar, Generic, Callable, Tuple
+from types import CoroutineType
 from itertools import chain
 from logging import Logger
 from uuid import uuid4
 from packets import json
 from .decorator import rpc_methods
-from ..aio import check_is_async
 from .types import MessageType, Request, Response, RPCSenderStopped, WrongConsumer, RPCDispatcherStopped, RPCException, NotToHandle, ResponseType, RPCDeliveryFailed
 from ..net.connection_base import ConnectionBase
 from ..log.log import get_logger
@@ -316,6 +316,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
 
         if request.response_required:
             if exception:
+                result = ''
                 self.log.error(f'RPC function exception. correlation_id: {request.correlation_id}, exception: {exception}')
             self.log.debug(f'Replying to RPC. correlation_id: {request.correlation_id}')
             response = Response(result=result, exception=exception)
@@ -365,10 +366,11 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             raise WrongConsumer(f'Callable method for {request.method} is not registered')
 
         method_impl, _ = self.methods[request.method]
-        if check_is_async(method_impl):
-            return await method_impl(self.app, *(request.rargs or []), correlation_id=request.correlation_id, app_id=request.app_id, headers=request.headers, **(request.rkwargs or {}))
+        res = method_impl(self.app, *(request.rargs or []), correlation_id=request.correlation_id, app_id=request.app_id, headers=request.headers, **(request.rkwargs or {}))
+        if isinstance(res, (asyncio.Future, CoroutineType)):
+            return await res
         else:
-            return method_impl(self.app, *(request.rargs or []), correlation_id=request.correlation_id, app_id=request.app_id, headers=request.headers, **(request.rkwargs or {}))
+            return res
 
     async def _dispatch_response(self, future: asyncio.Future, response: Response) -> None:
         if response.exception:

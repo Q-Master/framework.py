@@ -13,29 +13,29 @@ def external_decorator(method: Callable):
         return method(*args, **kwargs)
     return wrapper
 
+@rpc_method(decorator=external_decorator)
+async def sleepy():
+    await asyncio.sleep(1.0)
+
+@rpc_method()
+def not_sleepy():
+    time.sleep(1.0)
 
 class WorkersTestCase(unittest.IsolatedAsyncioTestCase):
-    @rpc_method(decorator=external_decorator)
-    async def sleepy(self):
-        await asyncio.sleep(1.0)
-
-    @rpc_method()
-    def not_sleepy(self):
-        time.sleep(1.0)
-
     async def test_is_async(self):
-        sleepy_is_async = is_async(self.sleepy)
+        global sleepy, not_sleepy
+        sleepy_is_async = is_async(sleepy)
         self.assertEqual(sleepy_is_async, True)
-        not_sleepy_is_not_async = is_async(self.not_sleepy)
+        not_sleepy_is_not_async = is_async(not_sleepy)
         self.assertEqual(not_sleepy_is_not_async, False)
-        sleepy_is_async = check_is_async(self.sleepy)
-        self.assertEqual(sleepy_is_async, True)
-        not_sleepy_is_not_async = check_is_async(self.not_sleepy)
-        self.assertEqual(not_sleepy_is_not_async, False)
-        sleepy, _ = rpc_methods.get('sleepy', (None, None))
         sleepy_is_async = check_is_async(sleepy)
         self.assertEqual(sleepy_is_async, True)
-        not_sleepy, _ = rpc_methods.get('not_sleepy', (None, None))
         not_sleepy_is_not_async = check_is_async(not_sleepy)
+        self.assertEqual(not_sleepy_is_not_async, False)
+        sleepy_, _ = rpc_methods.get('sleepy', (None, None))
+        sleepy_is_async = check_is_async(sleepy_)
+        self.assertEqual(sleepy_is_async, True)
+        not_sleepy_, _ = rpc_methods.get('not_sleepy', (None, None))
+        not_sleepy_is_not_async = check_is_async(not_sleepy_)
         self.assertEqual(not_sleepy_is_not_async, False)
         
