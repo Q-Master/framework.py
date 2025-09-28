@@ -341,7 +341,6 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             await self.connection.write(
                 msg.dumps(), *args, 
                 content_type='application/json', 
-                headers=msg.headers, 
                 correlation_id=correlation_id or msg.correlation_id, 
                 app_id=app_id or msg.app_id,
                 type='request' if isinstance(msg, Request) else 'response',
