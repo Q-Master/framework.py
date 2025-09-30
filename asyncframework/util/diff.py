@@ -1,5 +1,5 @@
 # -*- coding:utf-8 -*-
-from typing import Mapping, Optional, Any, Union, Iterator, TypeVar, Dict, List, Tuple, MutableSequence, Sequence, TypeAlias
+from typing import Mapping, Optional, Any, Union, Iterator, TypeVar, Dict, Tuple, MutableSequence, TypeAlias
 import itertools
 from _collections_abc import dict_keys, dict_items
 from collections import Counter
@@ -20,7 +20,7 @@ def diff(data1: Optional[_DT], data2: Optional[_DT]) -> Union[Dict[Any, Any], _D
         Union[dict, FieldDiff, Any, None]: the difference between two items in fmt key:[prev, curr] or just [prev, curr]
     """
     class FieldDiff():
-        curr: Optional[_DT]
+        curr: Optional[_DT] = None
         def __init__(self, curr: Optional[_DT]) -> None:
             self.curr = curr
 
@@ -42,25 +42,21 @@ def diff(data1: Optional[_DT], data2: Optional[_DT]) -> Union[Dict[Any, Any], _D
         elif data1 is None or data2 is None:
             return FieldDiff(data2)
         elif isinstance(data1, PacketBase):
-            return FieldDiff(iterate_fields(data1, data2, data1.fields_names()))
+            d = iterate_fields(data1, data2, data1.fields_names())
+            return FieldDiff(d) if d else None
         elif isinstance(data1, Mapping):
             assert isinstance(data2, Mapping), (data2, type(data2))
-            return FieldDiff(iterate_fields(data1, data2, iter(set(data1.keys()) | set(data2.keys()))))
+            d = iterate_fields(data1, data2, iter(set(data1.keys()) | set(data2.keys())))
+            return FieldDiff(d) if d else None
         elif isinstance(data1, (MutableSequence)) and isinstance(data2, (MutableSequence)):
-            if len(data1) == len(data2):
-                return FieldDiff(data2)
-            try:
-                c1 = Counter(data1)
-                c2 = Counter(data2)
-            except TypeError:
-                return FieldDiff(data2)
-            else:
-                return FieldDiff(list(
-                    itertools.chain.from_iterable(
-                        itertools.repeat(element, c2[element] - c1[element])
-                        for element in c2.keys()
-                    )
-                )) # type: ignore
+            dlist: MutableSequence = []
+            for a, b in itertools.zip_longest(data1, data2):
+                d = _real_diff(a, b)
+                if d is None or d.curr is None:
+                    continue
+                else:
+                    dlist.append(d.curr)
+            return FieldDiff(dlist) if dlist else None # type: ignore 
         elif data1 != data2:
             return FieldDiff(data2)
         else:
