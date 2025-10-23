@@ -335,6 +335,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
                 correlation_id=correlation_id or msg.correlation_id, 
                 app_id=app_id or msg.app_id,
                 type=msg.exception.type,
+                headers=msg.headers or {},
                 **kwargs
             )
         else:
@@ -344,6 +345,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
                 correlation_id=correlation_id or msg.correlation_id, 
                 app_id=app_id or msg.app_id,
                 type='request' if isinstance(msg, Request) else 'response',
+                headers=msg.headers or {},
                 **kwargs
             )
         
