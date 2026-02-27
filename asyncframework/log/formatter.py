@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 from typing import Tuple, Any, Mapping, Sequence, MutableMapping, Optional
 from itertools import chain
+from copy import deepcopy
 import logging
 
 
@@ -24,6 +25,7 @@ class LogFormatter(logging.Formatter):
 
 class TagDict(dict):
     def __setitem__(self, __key: Any, __value: Any) -> None:
+        print(f'Setting {__key} to {__value}')
         __key = f'"{__key}"'
         __value = _to_tag_value(__value)
         return super().__setitem__(__key, __value)
@@ -52,13 +54,17 @@ def _to_tag_dict(__value: Mapping) -> 'TagDict':
 
 
 class LoggerTaggingAdapter(logging.LoggerAdapter):
-
     def __init__(self, logger, extra: Optional[MutableMapping[str, Any]] = None) -> None:
         if isinstance(logger, LoggerTaggingAdapter):
-            logger, self.tags = logger.logger, logger.tags.copy()
+            self.tags = TagDict()
+            for k,v in logger.tags.items():
+                print(f'Copy {k} -> {v}')
+                super(TagDict, self.tags).__setitem__(k, v) 
+            _logger = logger.logger
         else:
             self.tags = TagDict()
-        super().__init__(logger)
+            _logger = logger
+        super().__init__(_logger)
         self.extra = extra or {}
         self.extra['tags'] = self.tags
         
