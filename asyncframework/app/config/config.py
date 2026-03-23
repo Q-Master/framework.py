@@ -2,8 +2,12 @@
 from typing import Dict, Optional
 from platform import node
 from packets import makeField
-from packets.processors import Hash, log_level_t, int_t, string_t, bool_t
-from .base import ConfigProtocolBase
+from packets.processors import Hash
+from packets.typedef.loglevel_t import loglevel_t
+from packets.typedef.int_t import int_t
+from packets.typedef.string_t import string_t
+from packets.typedef.bool_t import bool_t
+from .base import ConfigReader
 from ...log import log
 from ...log.formatter import LogFormatter
 
@@ -11,7 +15,7 @@ from ...log.formatter import LogFormatter
 __all__ = ['Config']
 
 
-class Config(ConfigProtocolBase):
+class Config(ConfigReader):
     pid_file: Optional[str] = makeField(string_t)
 
     #logging options
@@ -20,8 +24,8 @@ class Config(ConfigProtocolBase):
     syslog_host: Optional[str] = makeField(string_t)
     syslog_port: Optional[int] = makeField(int_t)
     log_name: str = makeField(string_t, default='')
-    log_level: str = makeField(log_level_t, default='debug')
-    log_levels: Dict[str, int] = makeField(Hash(string_t, log_level_t), default={})
+    log_level: int = makeField(loglevel_t, default='DEBUG')
+    log_levels: Dict[str, int] = makeField(Hash(string_t, loglevel_t), default={})
     log_filename: str = makeField(string_t, default='')
     log_format: str = makeField(string_t, default='%(asctime)s.%(msecs)03d %(name)s <%(levelname).1s> %(module)s:%(lineno)d] %(tags)s %(message)s')
     log_format_rsyslog: str = makeField(string_t, default=node() + ' %(name)s:<%(levelname).1s> %(module)s:%(lineno)d] %(tags)s %(message)s')

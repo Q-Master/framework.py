@@ -2,7 +2,7 @@
 import asyncio
 from typing import Any, Sequence, Optional, Dict, Tuple, Callable, TypeVar, Union
 from logging import Logger
-from packets import PacketBase, json
+from packets import PacketBase
 from ..decorator import rpc_methods
 from ..rpc import RPC
 from ..types import RPCException, Request, Response, WrongConsumer
@@ -42,7 +42,7 @@ class RPCPackets(RPC[T]):
         super().__init__(app, connection, *args, methods=methods, dont_receive=dont_receive, **kwargs)
         if response_models:
             for packet in response_models:
-                if 'packet_id' in packet.fields_names():
+                if 'packet_id' in packet.field_names():
                     self.response_models[f'{packet.packet_id.info.default}'] = packet # type: ignore # if packet_id is in fields names it will be here
         else:
             self.response_models = {}

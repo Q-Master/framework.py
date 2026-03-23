@@ -2,7 +2,6 @@
 from typing import Mapping, Optional, Any, Union, Iterator, TypeVar, Dict, Tuple, MutableSequence, TypeAlias
 import itertools
 from _collections_abc import dict_keys, dict_items
-from collections import Counter
 from packets import PacketBase
 
 
@@ -42,7 +41,7 @@ def diff(data1: Optional[_DT], data2: Optional[_DT]) -> Union[Dict[Any, Any], _D
         elif data1 is None or data2 is None:
             return FieldDiff(data2)
         elif isinstance(data1, PacketBase):
-            d = iterate_fields(data1, data2, data1.fields_names())
+            d = iterate_fields(data1, data2, data1.field_names())
             return FieldDiff(d) if d else None
         elif isinstance(data1, Mapping):
             assert isinstance(data2, Mapping), (data2, type(data2))
@@ -67,6 +66,7 @@ def diff(data1: Optional[_DT], data2: Optional[_DT]) -> Union[Dict[Any, Any], _D
 
 DiffKeys: TypeAlias = Dict[str, Union[str, 'DiffKeys']]
 
+
 def diff_keys(data1: Union[PacketBase, dict], data2: Union[PacketBase, dict]) -> DiffKeys:
     """Generate a difference between two items (only dict and Packet supported)
 
@@ -78,7 +78,7 @@ def diff_keys(data1: Union[PacketBase, dict], data2: Union[PacketBase, dict]) ->
         ValueError: in case of unsupported items
 
     Returns:
-        List[str]: list of fields, touched by changes in format a.b.c
+        DiffKeys: map of touched fields in format field: '1' or `DiffKeys`
     """
     keys_diff = {}
     def iterate_fields(it: Union[Iterator[Tuple[str, Any]], dict_items]):

@@ -2,7 +2,9 @@
 from typing import Any, List, Dict, Optional
 from enum import Enum
 from packets import Packet, makeField
-from packets.processors import string_t, Enumeration, any_t, Array, Hash, int_t
+from packets.processors import Enumeration, Array, Hash
+from packets.typedef.string_t import string_t
+from packets.typedef.any_t import any_t
 from .rpc_exception import rpc_exception_t, RPCException
 
 
@@ -29,13 +31,13 @@ class BaseMessage(Packet):
     correlation_id: str
     headers: Dict[str, Any]
     app_id: str
-    message_type: MessageType = makeField(message_type_t)
+    message_type: Optional[MessageType] = makeField(message_type_t)
 
 
 class Request(BaseMessage):
     message_type: MessageType = makeField(message_type_t, override=True, default=MessageType.MSG_REQUEST)
     method: Any = makeField(any_t, required=True)
-    response_type: int = makeField(response_type_t, required=True)
+    response_type: ResponseType = makeField(response_type_t, required=True)
     rargs: Optional[List[Any]] = makeField(Array(any_t), 'args')
     rkwargs: Optional[Dict[str, Any]] = makeField(Hash(string_t, any_t), 'kwargs')
 

@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
-from typing import Callable, Dict, Tuple, Any, TypeVar, Union
-from ..aio import is_async, set_async, set_if_async
+from typing import Callable, Dict, Tuple, Any, TypeVar
+from ..aio import set_async, set_if_async
 
 
 __all__ = ['rpc_methods', 'rpc_method']

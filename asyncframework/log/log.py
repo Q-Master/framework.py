@@ -46,7 +46,7 @@ def init_logging(
     syslog_host: Optional[str] = 'localhost',
     syslog_port: Optional[int] = 514,
     log_name: Optional[str] = None,
-    log_level: str = 'DEBUG',
+    log_level: Union[int, str] = 'DEBUG',
     log_levels: Optional[dict] = None,
     log_rotated_amount: int = 1,
     formatter: Optional[logging.Formatter] = None

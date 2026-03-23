@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 
-__version__ = '0.1.69'
+__version__ = '0.2.0'
 
 __title__ = 'asyncframework'
 __description__ = 'Async framework easy async python applications and serivces development library.'
@@ -12,4 +12,4 @@ __author__ = 'Vladimir Berezenko'
 __email__ = 'qmaster2000@gmail.com'
 
 __license__ = 'MIT'
-__copyright__ = 'Copyright 2019-2023 Vladimir Berezenko'
+__copyright__ = 'Copyright 2019-2026 Vladimir Berezenko'

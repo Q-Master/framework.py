@@ -1,5 +1,5 @@
 # -*- coding:utf-8 -*-
-from typing import Optional, Union, TypeVar, Self
+from typing import Optional, Union, TypeVar, Self, Dict, Type, Generic, Any, overload
 from packets import Packet, TablePacket, PacketBase
 from packets._packetbase import PacketMeta
 from packets import json
@@ -8,108 +8,78 @@ from ...util.dict_merge import merge_dicts
 from ...util.ro import ReadOnly
 
 
-__all__ = ['ConfigProtocolBase', 'ConfigTableProtocolBase']
-
-
-_empty = object()
-
-
-class _ConfigProtocolBase(Packet):
-    pass
-
-
-_T = TypeVar('_T', bound=PacketBase)
-
-class _ConfigTableProtocolBase(TablePacket[_T]):
-    pass
+__all__ = ['ConfigReader', 'TableConfigReader', 'configReader']
 
 
 class ConfigProtocolMeta(PacketMeta):
     def __new__(cls, name, bases, namespace, **kwargs):
-        filenames = {}
+        filenames: Dict[str, None] = {}
         for base in bases:
             if hasattr(base, '__filename__'):
                 fn = base.__filename__
                 if fn:
-                    if isinstance(fn, (list, tuple, set)):
-                        for f in fn:
-                            filenames[f] = _empty
+                    if isinstance(fn, (list)):
+                        filenames.update({f: None for f in fn})
                     else:
-                        filenames[fn] = _empty
+                        filenames[fn] = None
         fn = namespace.get('__filename__', None)
         if fn:
-            if isinstance(fn, (list, tuple, set)):
-                for f in fn:
-                    filenames[f] = _empty
+            if isinstance(fn, (list)):
+                filenames.update({f: None for f in fn})
             else:
-                filenames[fn] = _empty
-        namespace['__filename__'] = list(filenames.keys())
+                filenames[fn] = None
         config_readers = {}
-        slots = set(namespace.get('__slots__', []))
 
         for base in bases:
             if hasattr(base, '__config_readers__'):
                 config_readers.update(base.__config_readers__)
 
-        for attr, value in namespace.copy().items():
-            if (isinstance(value, type) and issubclass(value, (_ConfigProtocolBase, _ConfigTableProtocolBase))) or \
-                isinstance(value, (_ConfigProtocolBase, _ConfigTableProtocolBase)):
-                assert attr not in config_readers, f'Reassignment of {attr}'
-                config_readers[attr] = value.__class__ if isinstance(value, (_ConfigProtocolBase, _ConfigTableProtocolBase)) else value
-                namespace.pop(attr)
-                slots.add(attr)
-
         namespace['__config_readers__'] = config_readers
-        namespace['__slots__'] = list(slots)
+        namespace['__filename__'] = list(filenames.keys())
         return super(ConfigProtocolMeta, cls).__new__(cls, name, bases, namespace, **kwargs)
 
 
-class ConfigProtocolMthds(metaclass=ConfigProtocolMeta):
+class ConfigBase(PacketBase, metaclass=ConfigProtocolMeta):
     __log = log.get_logger('config')
-    __config_readers__: dict = {}
-    __filename__: Optional[Union[str, list, set, tuple]] = None
-    __slots__: list = []
-
+    __config_readers__: 'Dict[str, Type[ConfigBase]]' = {}
+    __filename__: Optional[Union[str, list]] = None
+    
     @property
     def log(self):
         return self.__log
-
-    @classmethod
-    def prepare(cls, config):
-        return cls
-
-    def __repr__(self):
-        return f'<{self.__filename__}>'
-
     
+    @classmethod
+    def load_cfg(cls, filename: Optional[str] = None) -> Self:
+        data = cls._load_data(filename)
+        module = cls.load(data)
+        module._reload_complete()
+        module.__class__.set_ro(True)
+        return module
+
     @classmethod
     def _load_data(cls, filename: Optional[str] = None) -> dict:
         if filename:
             if isinstance(cls.__filename__, list):
                 cls.__filename__.append(filename)
-            elif isinstance(cls.__filename__, tuple):
-                cls.__filename__ = cls.__filename__ +  (filename, )
-            elif isinstance(cls.__filename__, set):
-                cls.__filename__.add(filename)
             else:
                 cls.__filename__ = [cls.__filename__, filename]
         cfg_data = {}
         if not cls.__filename__:
             raise RuntimeError(f'No config file for {cls.__name__}')
-        if isinstance(cls.__filename__, (list, tuple, set)):
-            for fn in cls.__filename__:
-                with open(fn, 'r') as f:
-                    rd = json.load(f)
-                    merge_dicts(cfg_data, rd)
-        else:
-            with open(cls.__filename__) as f:
-                cfg_data = json.load(f)
+        for fn in cls.__filename__:
+            with open(fn, 'r') as f:
+                rd = json.load(f)
+                merge_dicts(cfg_data, rd)
         return cfg_data
 
     def _reload_complete(self):
-        for name, proto in self.__config_readers__.items():
-            module = proto.load_cfg()
-            setattr(self, name, module)
+        self.__loading__ = True
+        try:
+            for name, proto in self.__config_readers__.items():
+                module = proto.load_cfg()
+                setattr(self, name, module)
+        finally:
+            self.__loading__ = False
         self.on_config_loaded()
 
     def on_config_loaded(self):
@@ -117,31 +87,54 @@ class ConfigProtocolMthds(metaclass=ConfigProtocolMeta):
         pass
 
 
-class ConfigProtocolBase(ConfigProtocolMthds, _ConfigProtocolBase):
-    def __init__(self, **kwargs) -> None:
-        if '__strict' in kwargs:
-            kwargs.pop('__strict')
-        super().__init__(__strict=False, **kwargs)
+_R = TypeVar('_R', bound=ConfigBase)
+
+
+class ConfigReaderProtocol(Generic[_R]):
+    def __init__(self, reader: Type[_R]) -> None:
+        self._typ = reader
+        self._instance_name = ''
     
-    @classmethod
-    def load_cfg(cls, filename: Optional[str] = None) -> Self:
-        data = cls._load_data(filename)
-        module = cls.load(data)
-        module._reload_complete()
-        return ReadOnly.make_ro(module)
+    def __set__(self, instance: ConfigBase, value: _R):
+        if instance.__loading__:
+            setattr(instance.__class__, self._instance_name, value)
+            #print(f'SET: {instance.__class__.__name__}::{self._instance_name} = {value}')
+    
+    def __get__(self, instance: ConfigBase, owner = None) -> _R:
+        #print(f'GET: {instance.__class__.__name__}::{self._instance_name}')
+        return getattr(instance.__class__, self._instance_name)
+
+    def __delete__(self, instance):
+        raise RuntimeError(f'Config is readonly!')
+
+    def __set_name__(self, owner: 'Type[ConfigBase]', name):
+        if name in owner.__config_readers__:
+            raise AttributeError(f'Redefinition of a config reader {owner.__name__}::{name}')
+        self._instance_name = f'_{name}'
+        owner.__config_readers__[name] = self._typ
+        #print(f'SET NAME: {owner.__name__}::{self._instance_name}')
 
 
+class ConfigReader(ConfigBase, Packet):
+    pass
 
-class ConfigTableProtocolBase(ConfigProtocolMthds, _ConfigTableProtocolBase[_T]):
-    def __init__(self, **kwargs) -> None:
-        if '__strict' in kwargs:
-            kwargs.pop('__strict')
-        super().__init__(__strict=False, **kwargs)
 
-    @classmethod
-    def load_cfg(cls, filename: Optional[str] = None) -> Self:
-        data = cls._load_data(filename)
-        module = cls.load(data)
-        module._reload_complete()
-        return ReadOnly.make_ro(module)
+_T = TypeVar('_T', bound=PacketBase)
 
+
+class TableConfigReader(ConfigBase, TablePacket[_T]):
+    pass
+
+
+_CP = TypeVar('_CP', bound=ConfigReader)
+_CT = TypeVar('_CT', bound=TableConfigReader)
+
+
+@overload
+def configReader(reader: Type[_CP]) -> _CP: ...
+
+@overload
+def configReader(reader: Type[_CT]) -> _CT:...
+
+def configReader(reader: Type[_R]) -> Any:
+    return ConfigReaderProtocol[_R](reader)

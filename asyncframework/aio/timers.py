@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-from typing import Dict, Union, Callable, Any, Optional
+from typing import Dict, Union, Callable, Any
 from uuid import UUID, uuid4
 from asyncio import Future, ensure_future, sleep
 from functools import partial
-from packets import unixtime
+from packets.typedef.unixtime_t import UnixtimeT
 from ..app import Service
 from ..log import get_logger
 from ..util.datetime import time
@@ -15,7 +15,7 @@ __all__ = ['TimersService', 'Timer']
 
 class Timer:
     __slots__ = ['when', 'callback', 'args', 'kwargs', 'id']
-    def __init__(self, when: Union[unixtime, int], callback: Callable, *cargs, id: Any = None, **ckwargs) -> None:
+    def __init__(self, when: Union[UnixtimeT, int], callback: Callable, *cargs, id: Any = None, **ckwargs) -> None:
         self.when = when
         self.callback = callback
         self.args = cargs

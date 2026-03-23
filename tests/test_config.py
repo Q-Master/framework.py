@@ -2,8 +2,10 @@
 import unittest
 from typing import Optional
 from packets import Packet, makeField
-from packets.processors import string_t, int_t, bool_t
-from asyncframework.app.config import Config, ConfigTableProtocolBase, ConfigProtocolBase
+from packets.typedef.string_t import string_t
+from packets.typedef.int_t import int_t
+from packets.typedef.bool_t import bool_t
+from asyncframework.app.config import Config, TableConfigReader, ConfigReader, configReader
 
 
 
@@ -13,36 +15,38 @@ class Record(Packet):
     active: bool = makeField(bool_t, default=True)
     
 
-class RecordsConfig(ConfigTableProtocolBase[Record]):
-    __filename__ = 'records.json'
-    __default_field__ = makeField(Record)
+class RecordsConfig(TableConfigReader[Record]):
+    __filename__ = 'tests/records.json'
+    __default_field__ = makeField(Record, required=True)
 
 
-class RecordsConfigWithField(ConfigTableProtocolBase[Record]):
-    __filename__ = 'records_with_field.json'
-    __default_field__ = makeField(Record)
+class RecordsConfigWithField(TableConfigReader[Record]):
+    __filename__ = 'tests/records_with_field.json'
+    __default_field__ = makeField(Record, required=True)
     additional: bool = makeField(bool_t, required=True)
 
 
-class SimpleConfig(ConfigProtocolBase):
-    __filename__ = 'simple.json'
+class SimpleConfig(ConfigReader):
+    __filename__ = 'tests/simple.json'
     record: Record = makeField(Record, required=True)
     test: Optional[bool] = makeField(bool_t)
 
 
 class TConfig(Config):
-    records = RecordsConfig()
+    records = configReader(RecordsConfig)
 
 
 class TConfig1(Config):
-    records = RecordsConfigWithField()
+    records = configReader(RecordsConfigWithField)
 
 
 class TestConfig(unittest.TestCase):
     def test_config(self):
-        c1: TConfig = TConfig.load_cfg('dummy.json')
-        c2: TConfig1 = TConfig1.load_cfg('dummy.json')
         c3: SimpleConfig = SimpleConfig.load_cfg()
+        self.assertEqual(c3.test, None)
+    
+    def _test_config_table(self):
+        c1: TConfig = TConfig.load_cfg('tests/dummy.json')
         self.assertEqual(len(c1.records), 3)
         self.assertIsNotNone(c1.records)
         assert c1.records is not None
@@ -53,9 +57,11 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(c1.records.record3.name, 'test3')
         self.assertEqual(c1.records.record3.number, 3)
 
+    def test_config_table_with_field(self):
+        c2: TConfig1 = TConfig1.load_cfg('tests/dummy.json')
         self.assertEqual(c2.records.recordwf1.name, 'record')
         self.assertEqual(c2.records.recordwf1.number, 123)
         self.assertEqual(c2.records.recordwf2.name, 'record2')
         self.assertEqual(c2.records.recordwf2.number, 256)
         self.assertEqual(c2.records.additional, True)
-        self.assertEqual(c3.test, None)
+

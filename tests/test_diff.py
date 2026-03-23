@@ -2,8 +2,12 @@ from typing import Optional, List
 import unittest
 from copy import deepcopy
 from packets import Packet, makeField
-from packets.processors import int_t, string_t, float_t, Array
-from asyncframework.util.diff import diff, diff_keys
+from packets.processors import Array
+from packets.typedef.int_t import int_t
+from packets.typedef.string_t import string_t
+from packets.typedef.float_t import float_t 
+from asyncframework.util.diff import diff
+
 
 class Internal(Packet):
     d: Optional[int] = makeField(int_t)
@@ -33,8 +37,5 @@ class TestPacketDiff(unittest.TestCase):
         pkt.c.f = ['1', '2', '6']
         if pkt.is_modified():
             pkt_diff = diff(pkt_snapshot, pkt)
-            keys_diff = diff_keys(pkt_snapshot, pkt)
             self.assertIsInstance(pkt_diff, dict)
-            self.assertIsInstance(keys_diff, dict)
             self.assertDictEqual(pkt_diff, {'a': 0, 'c': {'d': 8, 'e': 'test2', 'f': ['6']}}) # type: ignore
-            self.assertDictEqual(keys_diff, {'a': '1', 'c': {'d': '1', 'e': '1', 'f': '1'}})

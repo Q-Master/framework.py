@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
-from typing import Optional
-from packets import FieldProcessor
+from typing import Optional, Type, TypeAlias
+from packets.processors.base import TypeDef
 from packets import json
 
 
@@ -77,23 +77,26 @@ _REVERSED_MAP = {
 }
 
 
-class RPCExceptionProcessor(FieldProcessor):
-    def check_py(self, value):
-        assert isinstance(value, RPCException), (value, type(value))
+class RPCExceptionProcessor(TypeDef[RPCException]):
+    def check_py(self, v: RPCException) -> bool:
+        return isinstance(v, RPCException)
 
-    def check_raw(self, value):
-        assert isinstance(value, str), (value, type(value))
+    def check_raw(self, r: str) -> bool:
+        return isinstance(r, str)
 
-    def raw_to_py(self, raw_value: str, strict):
-        js = json.loads(raw_value)
+    def raw_to_py(self, r: str, strict):
+        js = json.loads(r)
         cls = _REVERSED_MAP[js['cls']]
         return cls(js['message'], js['traceback'])
 
     def py_to_raw(self, value: RPCException):
         return json.dumps({'message': value.message, 'traceback': value.traceback, 'cls': _EXCEPTIONS_MAP.get(type(value))})
 
-    def my_type(cls):
-        return 'RPCException'
+    def zero_value(self) -> RPCException:
+        return RPCException('')
+    
+    def self_type(self) -> Type[RPCException]:
+        return RPCException
 
 
 rpc_exception_t = RPCExceptionProcessor()
