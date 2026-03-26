@@ -43,7 +43,7 @@ class RPCPackets(RPC[T]):
         if response_models:
             for packet in response_models:
                 if 'packet_id' in packet.field_names():
-                    self.response_models[f'{packet.packet_id.info.default}'] = packet # type: ignore # if packet_id is in fields names it will be here
+                    self.response_models[f'{packet.packet_id.default}'] = packet # type: ignore # if packet_id is in fields names it will be here
         else:
             self.response_models = {}
 

@@ -16,11 +16,11 @@ class NetTestCase(unittest.IsolatedAsyncioTestCase):
         def _on_cl(exc: Exception):
             pass
 
-        async def _on_msg(src, msg: str):
+        async def _on_msg(src, msg: str, **kwargs):
             self.assertEqual(msg, 'test')
             await src.write('test')
 
-        async def _on_client_msg(src, msg: str):
+        async def _on_client_msg(src, msg: str, **kwargs):
             self.assertEqual(msg, 'test')
             test_complete.set_result(True)
 
@@ -42,6 +42,7 @@ class NetTestCase(unittest.IsolatedAsyncioTestCase):
         await src.connect_to('127.0.0.1', 56789)
         await src.write('test')
         await test_complete
+        await src.close()
         await srv.stop()
         await serv_future
 

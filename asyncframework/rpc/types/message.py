@@ -33,6 +33,12 @@ class BaseMessage(Packet):
     app_id: str
     message_type: Optional[MessageType] = makeField(message_type_t)
 
+    def __init__(self, __strict__=True, **kwargs) -> None:
+        super().__init__(__strict__, **kwargs)
+        self.correlation_id = ''
+        self.headers = {}
+        self.app_id = ''
+
 
 class Request(BaseMessage):
     message_type: MessageType = makeField(message_type_t, override=True, default=MessageType.MSG_REQUEST)

@@ -7,6 +7,7 @@ from ssl import SSLContext
 from .server_base import ServerBase, FABRIC_TYPE
 from .connection_base import ConnectionBase
 from ..log.log import get_logger
+from ..util.datetime import time
 
 
 __all__ = ['SocketConnection', 'SocketServer', 'new_listen_socket']
@@ -119,6 +120,7 @@ class SocketConnection(ConnectionBase):
         ei = self.__writer.get_extra_info('peername')
         self.__connection_host = ei[0]
         self.__connection_port = ei[1]
+        self.__corr_id = f'{self.__connection_host}:{self.__connection_port}:{time.time()}'
         self.log.debug(f'Connected to {self.__connection_host}')
         self.__consumer_task = asyncio.ensure_future(self._read_reader())
         await self.on_connection_made(self.__writer.transport)
@@ -144,7 +146,7 @@ class SocketConnection(ConnectionBase):
         self.__connection_host = None
         self.__connection_port = None
 
-    async def write(self, msg: str, *args, **kwargs):
+    async def write(self, msg: str, *args, correlation_id = Optional[str], **kwargs):
         """Wrtite data to stream
 
         Args:
@@ -156,6 +158,8 @@ class SocketConnection(ConnectionBase):
         if not self.__writer:
             raise ConnectionError('No connection is made or writer is dead')
         self.__writer.write(msg.encode())
+        if correlation_id:
+            self.__corr_id = correlation_id
         await self.__writer.drain()
     
     async def _read_reader(self) -> None:
@@ -181,7 +185,7 @@ class SocketConnection(ConnectionBase):
                     await self.on_connection_lost(ConnectionResetError())
                     asyncio.ensure_future(self.close(is_lost=True))
                     break
-                await self.on_message_received(msg.decode())
+                await self.on_message_received(msg.decode(), correlation_id=self.__corr_id)
                 msg = b''
         except Exception as e:
             self.log.error(f'Reader stopped {traceback.format_exc()}')

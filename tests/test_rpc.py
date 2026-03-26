@@ -6,11 +6,13 @@ from asyncframework.net import SocketServer
 from asyncframework.rpc import RPC, rpc_method
 from asyncframework.rpc.packets import RPCPackets, rpc_packet
 from packets import Packet, makeField
-from packets.processors import int_t, string_t, int32_t
+from packets.typedef.int_t import int_t
+from packets.typedef.string_t import string_t
+from packets.typedef.int32_t import int32_t
 
 
 @rpc_method()
-def test(app, msg):
+def test(app, msg, **kwargs):
     app.assertEqual(msg, 'complete')
     app.test_complete.set_result(True)
     return 'ok'
@@ -34,7 +36,7 @@ def packet_test(app, msg, *args, **kwargs):
 
 
 class RPCTestCase(unittest.IsolatedAsyncioTestCase):
-    test_complete: asyncio.Future = asyncio.Future()
+    test_complete: asyncio.Future
 
     async def test_rpc(self):
         self.test_complete = asyncio.Future()
