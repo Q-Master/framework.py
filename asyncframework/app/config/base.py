@@ -97,12 +97,12 @@ class ConfigReaderProtocol(Generic[_R]):
     
     def __set__(self, instance: ConfigBase, value: _R):
         if instance.__loading__:
-            setattr(instance.__class__, self._instance_name, value)
-            #print(f'SET: {instance.__name__}::{self._instance_name} = {value}')
+            setattr(instance, self._instance_name, value)
+            #print(f'SET: {instance.__class__.__name__}::{self._instance_name} = {value}')
     
     def __get__(self, instance: ConfigBase, owner = None) -> _R:
-        #print(f'GET: {instance.__name__}::{self._instance_name}')
-        return getattr(instance.__class__, self._instance_name)
+        #print(f'GET: {instance.__class__.__name__}::{self._instance_name}')
+        return getattr(instance, self._instance_name)
 
     def __delete__(self, instance):
         raise RuntimeError(f'Config is readonly!')
@@ -115,14 +115,14 @@ class ConfigReaderProtocol(Generic[_R]):
         #print(f'SET NAME: {owner.__name__}::{self._instance_name}')
 
 
-class ConfigReader(ConfigBase, Packet):
+class ConfigReader(Packet, ConfigBase):
     pass
 
 
 _T = TypeVar('_T', bound=PacketBase)
 
 
-class TableConfigReader(ConfigBase, TablePacket[_T]):
+class TableConfigReader(TablePacket[_T], ConfigBase):
     def __reduce__(self) -> tuple[Any, ...]:
         ns = {k: v for k, v in self.__class__.__dict__.items() if isinstance(v, Field)}
         ns.update({
@@ -132,14 +132,13 @@ class TableConfigReader(ConfigBase, TablePacket[_T]):
             '__filename__': self.__class__.__dict__['__filename__']
         })
         for f in self.__fields__.values():
-            ns[f._instance_name] = getattr(self, f.name)
-        # updating partial namespace with current class params
-        new_rparams = (
+            ns[f._instance_name] = getattr(self, f._instance_name)
+        rparams = (
             create_table_config_reader_class,
             (self.__class__.__name__, self.__class__.__bases__, ns),
             self.__dict__
         )
-        return new_rparams
+        return rparams
 
 
 def create_table_config_reader_class(name, bases, namespace) -> TableConfigReader[_T]:
