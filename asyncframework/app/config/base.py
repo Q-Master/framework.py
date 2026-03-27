@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 from typing import Optional, Union, TypeVar, Self, Dict, Type, Generic, Any, overload
 import types
-from packets import Packet, TablePacket, PacketBase
+from packets import Packet, TablePacket, PacketBase, Field
 from packets._packetbase import PacketMeta
 from packets import json
 from ...log import log
@@ -98,10 +98,10 @@ class ConfigReaderProtocol(Generic[_R]):
     def __set__(self, instance: ConfigBase, value: _R):
         if instance.__loading__:
             setattr(instance.__class__, self._instance_name, value)
-            #print(f'SET: {instance.__class__.__name__}::{self._instance_name} = {value}')
+            #print(f'SET: {instance.__name__}::{self._instance_name} = {value}')
     
     def __get__(self, instance: ConfigBase, owner = None) -> _R:
-        #print(f'GET: {instance.__class__.__name__}::{self._instance_name}')
+        #print(f'GET: {instance.__name__}::{self._instance_name}')
         return getattr(instance.__class__, self._instance_name)
 
     def __delete__(self, instance):
@@ -124,16 +124,19 @@ _T = TypeVar('_T', bound=PacketBase)
 
 class TableConfigReader(ConfigBase, TablePacket[_T]):
     def __reduce__(self) -> tuple[Any, ...]:
-        reduce_params = super().__reduce__()
-        ns_dict = reduce_params[1][2]
-        ns_dict.update({
+        ns = {k: v for k, v in self.__class__.__dict__.items() if isinstance(v, Field)}
+        ns.update({
+            '__fields__': self.__class__.__dict__['__fields__'],
+            '__raw_mapping__': self.__class__.__dict__['__raw_mapping__'],
             '__config_readers__': self.__class__.__dict__['__config_readers__'], 
             '__filename__': self.__class__.__dict__['__filename__']
         })
+        for f in self.__fields__.values():
+            ns[f._instance_name] = getattr(self, f.name)
         # updating partial namespace with current class params
         new_rparams = (
             create_table_config_reader_class,
-            (reduce_params[1][0], reduce_params[1][1], ns_dict),
+            (self.__class__.__name__, self.__class__.__bases__, ns),
             self.__dict__
         )
         return new_rparams
