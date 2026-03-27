@@ -110,6 +110,9 @@ def get_logger(name: Optional[str] = None, parent: Optional[logging.Logger] = No
     Returns:
         logging.Logger: logger
     """
+    if not name:
+        name = __logger_names[0]
+    
     if name:
         if __logger_names[0]:
             name = __logger_names[0]
