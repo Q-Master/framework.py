@@ -110,11 +110,6 @@ def get_logger(name: Optional[str] = None, parent: Optional[logging.Logger] = No
     Returns:
         logging.Logger: logger
     """
-    if not name:
-        name = sys.modules['__main__'].__file__
-        if name:
-            name = os.path.split(name)[-1]
-
     if name:
         if __logger_names[0]:
             name = __logger_names[0]

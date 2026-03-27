@@ -1,11 +1,11 @@
 # -*- coding:utf-8 -*-
 from typing import Optional, Union, TypeVar, Self, Dict, Type, Generic, Any, overload
+import types
 from packets import Packet, TablePacket, PacketBase
 from packets._packetbase import PacketMeta
 from packets import json
 from ...log import log
 from ...util.dict_merge import merge_dicts
-from ...util.ro import ReadOnly
 
 
 __all__ = ['ConfigReader', 'TableConfigReader', 'configReader']
@@ -123,7 +123,27 @@ _T = TypeVar('_T', bound=PacketBase)
 
 
 class TableConfigReader(ConfigBase, TablePacket[_T]):
-    pass
+    def __reduce__(self) -> tuple[Any, ...]:
+        reduce_params = super().__reduce__()
+        ns_dict = reduce_params[1][2]
+        ns_dict.update({
+            '__config_readers__': self.__class__.__dict__['__config_readers__'], 
+            '__filename__': self.__class__.__dict__['__filename__']
+        })
+        # updating partial namespace with current class params
+        new_rparams = (
+            create_table_config_reader_class,
+            (reduce_params[1][0], reduce_params[1][1], ns_dict),
+            self.__dict__
+        )
+        return new_rparams
+
+
+def create_table_config_reader_class(name, bases, namespace) -> TableConfigReader[_T]:
+    partial_class: Type[TableConfigReader[_T]] = types.new_class(f'Partial{name}', bases, exec_body = lambda ns: ns.update(namespace))
+    pckt = partial_class(__strict__=False)
+    pckt.set_ro(True)
+    return pckt
 
 
 _CP = TypeVar('_CP', bound=ConfigReader)
