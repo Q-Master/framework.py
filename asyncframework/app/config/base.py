@@ -13,21 +13,21 @@ __all__ = ['ConfigReader', 'TableConfigReader', 'configReader']
 
 class ConfigProtocolMeta(PacketMeta):
     def __new__(cls, name, bases, namespace, **kwargs):
-        filenames: Dict[str, None] = {}
+        filenames: Dict[str, int] = {}
         for base in bases:
             if hasattr(base, '__filename__'):
                 fn = base.__filename__
                 if fn:
                     if isinstance(fn, (list)):
-                        filenames.update({f: None for f in fn})
+                        filenames.update({f: 1 for f in fn})
                     else:
-                        filenames[fn] = None
+                        filenames[fn] = 1
         fn = namespace.get('__filename__', None)
         if fn:
             if isinstance(fn, (list)):
-                filenames.update({f: None for f in fn})
+                filenames.update({f: 1 for f in fn})
             else:
-                filenames[fn] = None
+                filenames[fn] = 1
         config_readers = {}
 
         for base in bases:
@@ -127,6 +127,7 @@ class TableConfigReader(TablePacket[_T], ConfigBase):
         ns = {k: v for k, v in self.__class__.__dict__.items() if isinstance(v, Field)}
         ns.update({
             '__fields__': self.__class__.__dict__['__fields__'],
+            '__local_fields_names__': self.__class__.__dict__['__local_fields_names__'],
             '__raw_mapping__': self.__class__.__dict__['__raw_mapping__'],
             '__config_readers__': self.__class__.__dict__['__config_readers__'], 
             '__filename__': self.__class__.__dict__['__filename__']
@@ -141,8 +142,8 @@ class TableConfigReader(TablePacket[_T], ConfigBase):
         return rparams
 
 
-def create_table_config_reader_class(name, bases, namespace) -> TableConfigReader[_T]:
-    partial_class: Type[TableConfigReader[_T]] = types.new_class(f'Partial{name}', bases, exec_body = lambda ns: ns.update(namespace))
+def create_table_config_reader_class(name, bases, namespace) -> TableConfigReader:
+    partial_class: Type[TableConfigReader] = types.new_class(f'Partial{name}', bases, exec_body = lambda ns: ns.update(namespace))
     pckt = partial_class(__strict__=False)
     pckt.set_ro(True)
     return pckt
