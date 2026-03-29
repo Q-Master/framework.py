@@ -127,11 +127,13 @@ class TableConfigReader(TablePacket[_T], ConfigBase):
         ns = {k: v for k, v in self.__class__.__dict__.items() if isinstance(v, Field)}
         ns.update({
             '__fields__': self.__class__.__dict__['__fields__'],
-            '__local_fields_names__': self.__class__.__dict__['__local_fields_names__'],
             '__raw_mapping__': self.__class__.__dict__['__raw_mapping__'],
             '__config_readers__': self.__class__.__dict__['__config_readers__'], 
             '__filename__': self.__class__.__dict__['__filename__']
         })
+        ln = self.__class__.__dict__.get('__local_fields_names__')
+        if ln:
+            ns['__local_fields_names__'] = ln
         for f in self.__fields__.values():
             ns[f._instance_name] = getattr(self, f._instance_name)
         rparams = (
