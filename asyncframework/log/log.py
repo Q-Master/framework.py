@@ -9,13 +9,13 @@ from .formatter import LogFormatter
 __all__ = ['set_levels', 'set_handler', 'init_logging', 'get_logger']
 
 
-__active_loggers = []
-__logger_names = ['']
+_active_loggers = []
+_logger_names = ['']
 
 
 class FWLogger(logging.Logger):
     def __init__(self, name: str, level=logging.NOTSET):
-        super().__init__(__logger_names[0] if __logger_names[0] else name, level)
+        super().__init__(_logger_names[0] if _logger_names[0] else name, level)
 
 
 def set_levels(levels: Dict[Optional[str], Union[int, str]]):
@@ -71,7 +71,7 @@ def init_logging(
         handler = logging.StreamHandler(sys.stdout)
     elif syslog:
         if syslog_host is None:
-            raise RuntimeError(f'rsyslog host address is not set') 
+            raise RuntimeError(f'rsyslog host address is not set')
         if syslog_port is None:
             raise RuntimeError(f'rsyslog port is not set')
         if not log_name:
@@ -111,11 +111,11 @@ def get_logger(name: Optional[str] = None, parent: Optional[logging.Logger] = No
         logging.Logger: logger
     """
     if not name:
-        name = __logger_names[0]
-    
+        name = _logger_names[0]
+
     if name:
-        if __logger_names[0]:
-            name = __logger_names[0]
+        if _logger_names[0]:
+            name = _logger_names[0]
 
         logger = logging.Logger(name)
         if isinstance(parent, logging.Logger):
@@ -123,7 +123,7 @@ def get_logger(name: Optional[str] = None, parent: Optional[logging.Logger] = No
         else:
             logger.parent = logging.getLogger(parent) if parent else logging.Logger.root  # type: ignore
 
-        __active_loggers.append(logger)
+        _active_loggers.append(logger)
 
         return logger
     else:
@@ -131,11 +131,11 @@ def get_logger(name: Optional[str] = None, parent: Optional[logging.Logger] = No
 
 
 def set_local_top_logger_name(name: str):
-    __logger_names[0] = name
+    _logger_names[0] = name
 
 
 def change_active_logger_names(name: str):
-    for l in __active_loggers:
+    for l in _active_loggers:
         setattr(l, 'name', name)
 
 
@@ -144,3 +144,4 @@ def change_all_logger_names(name: str):
     for v in logger_dict.values():
         if hasattr(v, 'name'):
             v.name = name # type: ignore
+
