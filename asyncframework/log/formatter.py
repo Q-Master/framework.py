@@ -25,7 +25,6 @@ class LogFormatter(logging.Formatter):
 
 class TagDict(dict):
     def __setitem__(self, __key: Any, __value: Any) -> None:
-        print(f'Setting {__key} to {__value}')
         __key = f'"{__key}"'
         __value = _to_tag_value(__value)
         return super().__setitem__(__key, __value)
@@ -58,7 +57,6 @@ class LoggerTaggingAdapter(logging.LoggerAdapter):
         if isinstance(logger, LoggerTaggingAdapter):
             self.tags = TagDict()
             for k,v in logger.tags.items():
-                print(f'Copy {k} -> {v}')
                 super(TagDict, self.tags).__setitem__(k, v) 
             _logger = logger.logger
         else:
