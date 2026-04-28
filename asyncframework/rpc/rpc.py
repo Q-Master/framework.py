@@ -222,8 +222,8 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         else:
             raise Exception(f'Unknown message type received {message_type}')
         result.correlation_id = kwargs.get('correlation_id', '')
-        result.headers = kwargs.get('headers', {})
-        result.app_id = kwargs.get('app_id', '')
+        result.headers = kwargs.pop('headers', {})
+        result.app_id = kwargs.pop('app_id', '')
         return result
 
     async def _message_received(self, instance: ConnectionBase, msg: str, *args, **kwargs):
@@ -295,7 +295,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             )
             resp.correlation_id = request.correlation_id
             resp.app_id = request.app_id
-            await self._write(resp, *args, **kwargs)
+            await self._write(resp)
             return
 
         try:
@@ -322,9 +322,9 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             response = Response(result=result, exception=exception)
             response.correlation_id = request.correlation_id
             response.app_id = request.app_id
-            await self._write(response, *args, **kwargs)
+            await self._write(response)
 
-    async def _write(self, msg: Request | Response, *args, correlation_id: Optional[str] = None, app_id: Optional[str] = None, msg_type: Optional[str] = None, content_type: Optional[str] = None, **kwargs) -> None:
+    async def _write(self, msg: Union[Request, Response]) -> None:
         """Send message to transport.
         Might be overloaded to process the message before sending
         """
@@ -332,21 +332,19 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             await self.connection.write(
                 msg.exception.message, 
                 content_type='application/x-exception', 
-                correlation_id=correlation_id or msg.correlation_id, 
-                app_id=app_id or msg.app_id,
+                correlation_id=msg.correlation_id, 
+                app_id=msg.app_id,
                 type=msg.exception.type,
-                headers=msg.headers or {},
-                **kwargs
+                headers=msg.headers or {}
             )
         else:
             await self.connection.write(
-                msg.dumps(), *args, 
+                msg.dumps(),
                 content_type='application/json', 
-                correlation_id=correlation_id or msg.correlation_id, 
-                app_id=app_id or msg.app_id,
+                correlation_id=msg.correlation_id, 
+                app_id=msg.app_id,
                 type='request' if isinstance(msg, Request) else 'response',
-                headers=msg.headers or {},
-                **kwargs
+                headers=msg.headers or {}
             )
         
     async def _dispatch_request(self, request: Request) -> Any:
