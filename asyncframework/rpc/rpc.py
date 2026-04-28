@@ -171,7 +171,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         if self.dont_receive:
             self.log.debug('Ignoring the request. dont_receive is True')
             return
-        future = asyncio.Task(self._process_request(request, *args, **kwargs))
+        future = asyncio.Task(self._process_request(request))
         self.receive_request_futures[request.correlation_id] = future
         future.add_done_callback(on_done)
 
@@ -224,6 +224,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         result.correlation_id = kwargs.get('correlation_id', '')
         result.headers = kwargs.pop('headers', {})
         result.app_id = kwargs.pop('app_id', '')
+        result.reply_to = kwargs.pop('reply_to', None)
         return result
 
     async def _message_received(self, instance: ConnectionBase, msg: str, *args, **kwargs):
@@ -257,6 +258,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
                 )
                 resp.correlation_id = loaded_msg.correlation_id
                 resp.app_id = loaded_msg.app_id
+                resp.reply_to = loaded_msg.reply_to
                 await self._recv_response(resp)
             elif isinstance(loaded_msg, Response):
                 self.log.error(f'Response not delivered. correlation_id: {loaded_msg.correlation_id}, msg: {msg}')
@@ -277,8 +279,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
 
     async def _process_request(
             self,
-            request: Request,
-            *args, **kwargs
+            request: Request
     ) -> None:
         """Process the incoming request
 
@@ -295,6 +296,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             )
             resp.correlation_id = request.correlation_id
             resp.app_id = request.app_id
+            resp.reply_to = request.reply_to
             await self._write(resp)
             return
 
@@ -322,6 +324,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             response = Response(result=result, exception=exception)
             response.correlation_id = request.correlation_id
             response.app_id = request.app_id
+            response.reply_to = request.reply_to
             await self._write(response)
 
     async def _write(self, msg: Union[Request, Response]) -> None:
@@ -335,7 +338,8 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
                 correlation_id=msg.correlation_id, 
                 app_id=msg.app_id,
                 type=msg.exception.type,
-                headers=msg.headers or {}
+                headers=msg.headers or {},
+                reply_to=msg.reply_to
             )
         else:
             await self.connection.write(
@@ -344,7 +348,8 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
                 correlation_id=msg.correlation_id, 
                 app_id=msg.app_id,
                 type='request' if isinstance(msg, Request) else 'response',
-                headers=msg.headers or {}
+                headers=msg.headers or {},
+                reply_to=msg.reply_to
             )
         
     async def _dispatch_request(self, request: Request) -> Any:
