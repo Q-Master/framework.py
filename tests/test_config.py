@@ -1,5 +1,5 @@
 # -*- coding:utf-8 -*-
-import unittest
+import unittest, pickle
 from typing import Optional
 from packets import Packet, makeField
 from packets.typedef.string_t import string_t
@@ -35,6 +35,9 @@ class SimpleConfig(ConfigReader):
 class TConfig(Config):
     records = configReader(RecordsConfig)
 
+    def test_call(self) -> bool:
+        return True
+
 
 class TConfig1(Config):
     records = configReader(RecordsConfigWithField)
@@ -65,3 +68,9 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(c2.records.recordwf2.number, 256)
         self.assertEqual(c2.records.additional, True)
 
+    def test_config_table_with_pickling(self):
+        c: TConfig = TConfig.load_cfg('tests/dummy.json')
+        self.assertEqual(len(c.records), 3)
+        c_pickled = pickle.loads(pickle.dumps(c, -1))
+        self.assertHasAttr(c_pickled, 'test_call')
+        self.assertEqual(c_pickled.test_call(), True)

@@ -123,32 +123,7 @@ _T = TypeVar('_T', bound=PacketBase)
 
 
 class TableConfigReader(TablePacket[_T], ConfigBase):
-    def __reduce__(self) -> tuple[Any, ...]:
-        ns = {k: v for k, v in self.__class__.__dict__.items() if isinstance(v, Field)}
-        ns.update({
-            '__fields__': self.__class__.__dict__['__fields__'],
-            '__raw_mapping__': self.__class__.__dict__['__raw_mapping__'],
-            '__config_readers__': self.__class__.__dict__['__config_readers__'], 
-            '__filename__': self.__class__.__dict__['__filename__']
-        })
-        ln = self.__class__.__dict__.get('__local_fields_names__')
-        if ln:
-            ns['__local_fields_names__'] = ln
-        for f in self.__fields__.values():
-            ns[f._instance_name] = getattr(self, f._instance_name)
-        rparams = (
-            create_table_config_reader_class,
-            (self.__class__.__name__, self.__class__.__bases__, ns),
-            self.__dict__
-        )
-        return rparams
-
-
-def create_table_config_reader_class(name, bases, namespace) -> TableConfigReader:
-    partial_class: Type[TableConfigReader] = types.new_class(f'Partial{name}', bases, exec_body = lambda ns: ns.update(namespace))
-    pckt = partial_class(__strict__=False)
-    pckt.set_ro(True)
-    return pckt
+    pass
 
 
 _CP = TypeVar('_CP', bound=ConfigReader)
