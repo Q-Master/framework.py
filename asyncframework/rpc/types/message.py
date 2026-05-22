@@ -55,7 +55,7 @@ class Request(BaseMessage):
 
 class Response(BaseMessage):
     message_type: MessageType = makeField(message_type_t, override=True, default=MessageType.MSG_RESPONSE)
-    result: Optional[Any] = makeField(any_t)
+    result: Optional[Any] = makeField(any_t, may_be_none=True)
     exception: Optional[RPCException] = makeField(rpc_exception_t)
 
 
