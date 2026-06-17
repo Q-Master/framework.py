@@ -60,10 +60,8 @@ class RPCConnectionMixin:
         message = RPCMessage.loads(msg)
         await super().on_message_returned( # type: ignore
             message.msg, 
-            msg_type = message.msg_type, 
             correlation_id = message.correlation_id, 
-            content_type = message.content_type, 
             app_id = message.app_id,
-            headers = message.headers,
-            reply_to = message.reply_to
+            reply_to = message.reply_to,
+            raw_msg = msg
         )

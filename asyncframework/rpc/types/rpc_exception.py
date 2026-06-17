@@ -1,5 +1,5 @@
 # -*- coding:utf-8 -*-
-from typing import Optional, Type, TypeAlias
+from typing import Optional, Type
 from packets.processors.base import TypeDef
 from packets import json
 
@@ -10,6 +10,7 @@ __all__ = [
     'WrongConsumer', 
     'RPCSenderStopped', 
     'RPCDispatcherStopped', 
+    'RPCConnectionLost',
     'RPCDeliveryFailed', 
     'RPCExceptionProcessor', 
     'rpc_exception_t'
@@ -58,22 +59,44 @@ class RPCDispatcherStopped(RPCException):
     """
     pass
 
-
-class RPCDeliveryFailed(RPCException):
-    """Exception caused by delivery error
+class RPCConnectionLost(RPCException):
+    """Exception on connection lost while waiting for reply
     """
     pass
+
+class RPCDeliveryFailed(RPCException):
+    __slots__ = (
+        'correlation_id',
+        'app_id',
+        'reply_to'
+    )
+    """Exception caused by delivery error
+    """
+    def __init__(self, 
+        message: str, 
+        correlation_id: Optional[str], 
+        app_id: Optional[str], 
+        reply_to: Optional[str], 
+        type: str | None = None, 
+        traceback: str | None = None
+    ):
+        super().__init__(message, type, traceback)
+        self.correlation_id = correlation_id
+        self.app_id = app_id
+        self.reply_to = reply_to
 
 
 _EXCEPTIONS_MAP = {
     RPCException: 0,
     RPCSenderStopped: 1,
-    RPCDispatcherStopped: 2
+    RPCDispatcherStopped: 2,
+    RPCConnectionLost: 3
 }
 _REVERSED_MAP = {
     0: RPCException,
     1: RPCSenderStopped,
-    2: RPCDispatcherStopped
+    2: RPCDispatcherStopped,
+    3: RPCConnectionLost
 }
 
 

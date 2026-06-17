@@ -8,7 +8,7 @@ from logging import Logger
 from uuid import uuid4
 from packets import json
 from .decorator import rpc_methods
-from .types import MessageType, Request, Response, RPCSenderStopped, WrongConsumer, RPCDispatcherStopped, RPCException, NotToHandle, ResponseType, RPCDeliveryFailed
+from .types import MessageType, Request, Response, RPCSenderStopped, WrongConsumer, RPCDispatcherStopped, RPCException, NotToHandle, ResponseType, RPCDeliveryFailed, RPCConnectionLost
 from ..net.connection_base import ConnectionBase
 from ..log.log import get_logger
 
@@ -24,6 +24,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
     wait_response_futures: Dict[str, asyncio.Future] = {}
     receive_request_futures: Dict[str, asyncio.Future] = {}
     methods: Dict[str, Tuple[Callable, Any]] = {}
+    __on_message_returned: Optional[Callable[[Any], bool]]
 
     def __init__(self, 
         app: T, 
@@ -56,9 +57,10 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         self.wait_response_futures = {}
         self.receive_request_futures = {}
         self.stopped: bool = False
+        self.__on_message_returned = None
 
     @property
-    def unclosed_futures(self) -> Iterable:
+    def unclosed_futures(self) -> Iterable[asyncio.Future]:
         """List all unclosed futures (requests and dispatches)
 
         Returns:
@@ -154,6 +156,9 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             await self.connection.close()
         self.log.info('RPC stopped')
 
+    def set_on_message_returned(self, on_message_returned: Callable[[Any], bool]):
+        self.__on_message_returned = on_message_returned
+    
     async def _recv_request(
             self,
             request: Request
@@ -262,12 +267,10 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
 
     async def _message_returned(self, 
         msg: str, 
-        msg_type: str, 
         correlation_id: Optional[str] = None, 
-        content_type: Optional[str] = None,
         app_id: Optional[str] = None,
-        headers: Optional[dict[str, str]] = None,
-        reply_to: Optional[str] = None
+        reply_to: Optional[str] = None,
+        raw_msg: Optional[Any] = None
     ):
         """Callback on message returned by the transport
 
@@ -275,19 +278,19 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             msg (str): returned message
         """ 
         try:
-            loaded_msg = self._load_message(msg, msg_type, correlation_id, content_type, app_id, headers, reply_to)
-            if isinstance(loaded_msg, Request):
-                resp = Response(
-                    exception=RPCDeliveryFailed(f'Request not delivered. correlation_id: {loaded_msg.correlation_id}')
-                )
-                resp.correlation_id = loaded_msg.correlation_id
-                resp.app_id = loaded_msg.app_id
-                resp.reply_to = loaded_msg.reply_to
-                await self._recv_response(resp)
-            elif isinstance(loaded_msg, Response):
-                self.log.error(f'Response not delivered. correlation_id: {loaded_msg.correlation_id}, msg: {msg}')
+            need_stop = True
+            if self.__on_message_returned:
+                need_stop |= self.__on_message_returned(raw_msg)
+            if need_stop:
+                js: dict = json.loads(msg)
+                message_type = js.get('message_type', None)
+                if message_type == MessageType.MSG_REQUEST.value:
+                    resp = Response(
+                        exception=RPCDeliveryFailed(msg, correlation_id, app_id, reply_to)
+                    )
+                    await self._recv_response(resp)
             else:
-                self.log.error(f'Unknown message type: {msg} ({type(loaded_msg)})')
+                self.log.error(f'Message not delivered. correlation_id: {correlation_id}, msg: {msg}')
         except Exception as e:
             self.log.error(f'Error parsing the message: {msg}, exception: {e}, traceback: {traceback.format_exc()}')
 
@@ -297,9 +300,9 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         Args:
             exc (Exception): the exception caught.
         """
+        for future in self.unclosed_futures:
+            future.set_exception(RPCConnectionLost(f'Connection lost: {exc}'))
         await self.stop()
-        #for future in self.unclosed_futures:
-        #    future.set_exception(RPCException(f"Connection lost: {exc}"))
 
     async def _process_request(
             self,
