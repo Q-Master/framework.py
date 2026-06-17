@@ -1,5 +1,5 @@
 # -*- coding:utf-8 -*-
-from typing import Union, Any, Dict, Optional, Iterable, TypeVar, Generic, Callable, Tuple
+from typing import Union, Any, Dict, Optional, Iterable, TypeVar, Generic, Callable, Tuple, Awaitable
 import asyncio
 import traceback
 from types import CoroutineType
@@ -24,7 +24,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
     wait_response_futures: Dict[str, asyncio.Future] = {}
     receive_request_futures: Dict[str, asyncio.Future] = {}
     methods: Dict[str, Tuple[Callable, Any]] = {}
-    __on_message_returned: Optional[Callable[[Any], bool]]
+    __on_message_returned: Optional[Union[Callable[[Any], Awaitable[bool]], Callable[[Any], bool]]]
 
     def __init__(self, 
         app: T, 
@@ -156,7 +156,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             await self.connection.close()
         self.log.info('RPC stopped')
 
-    def set_on_message_returned(self, on_message_returned: Callable[[Any], bool]):
+    def set_on_message_returned(self, on_message_returned: Union[Callable[[Any], Awaitable[bool]], Callable[[Any], bool]]):
         self.__on_message_returned = on_message_returned
     
     async def _recv_request(
@@ -280,7 +280,12 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         try:
             need_stop = True
             if self.__on_message_returned:
-                need_stop |= self.__on_message_returned(raw_msg)
+                res = self.__on_message_returned(raw_msg)
+                if isinstance(res, (asyncio.Future, CoroutineType)):
+                    res = await res
+                else:
+                    return res
+                need_stop |= res
             if need_stop:
                 js: dict = json.loads(msg)
                 message_type = js.get('message_type', None)
