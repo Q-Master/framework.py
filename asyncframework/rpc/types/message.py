@@ -29,7 +29,7 @@ response_type_t = Enumeration(ResponseType)
 
 class BaseMessage(Packet):
     correlation_id: str
-    headers: Dict[str, Any]
+    headers: Dict[str, str]
     app_id: Optional[str]
     reply_to: Optional[str] = None
     message_type: Optional[MessageType] = makeField(message_type_t)

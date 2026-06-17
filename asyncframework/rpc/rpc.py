@@ -156,8 +156,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
 
     async def _recv_request(
             self,
-            request: Request,
-            *args, **kwargs
+            request: Request
     ) -> None:
         """Receive the incoming request
 
@@ -182,8 +181,7 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
 
     async def _recv_response(
             self,
-            response: Response,
-            *args, **kwargs
+            response: Response
     ) -> None:
         """Receive the incoming response
 
@@ -209,49 +207,75 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         """
         return uuid4().hex
 
-    def _load_message(self, msg: str, **kwargs) -> Union[Request, Response]:
+    def _load_message(self, 
+        msg: str, 
+        msg_type: str, 
+        correlation_id: Optional[str] = None, 
+        content_type: Optional[str] = None,
+        app_id: Optional[str] = None,
+        headers: Optional[dict[str, str]] = None,
+        reply_to: Optional[str] = None
+    ) -> Union[Request, Response]:
         js: dict = json.loads(msg)
         message_type = js.get('message_type', None)
         if message_type == MessageType.MSG_REQUEST.value:
             result = Request.load(js)
         elif message_type == MessageType.MSG_RESPONSE.value:
             result = Response.load(js)
-            ct = kwargs.get('content_type', '')
-            if ct == 'application/x-exception':
-                result.exception = RPCException(f'{result.result}', type=kwargs.get('msg_type'))
+            if content_type == 'application/x-exception':
+                assert result.exception is not None
+                result.exception.type = msg_type
         else:
             raise Exception(f'Unknown message type received {message_type}')
-        result.correlation_id = kwargs.get('correlation_id', '')
-        result.headers = kwargs.pop('headers', {})
-        result.app_id = kwargs.pop('app_id', '')
-        result.reply_to = kwargs.pop('reply_to', None)
+
+        result.correlation_id = correlation_id or ''
+        result.app_id = app_id
+        result.reply_to = reply_to
+        result.headers = headers or {}
         return result
 
-    async def _message_received(self, instance: ConnectionBase, msg: str, *args, **kwargs):
+    async def _message_received(self, 
+        instance: ConnectionBase, 
+        msg: str, 
+        msg_type: str, 
+        correlation_id: Optional[str] = None, 
+        content_type: Optional[str] = None,
+        app_id: Optional[str] = None,
+        headers: Optional[dict[str, str]] = None,
+        reply_to: Optional[str] = None
+    ):
         """Callback on incoming message from transport
 
         Args:
             msg (str): the incoming message
         """
         try:
-            loaded_msg = self._load_message(msg, **kwargs)
+            loaded_msg = self._load_message(msg, msg_type, correlation_id, content_type, app_id, headers, reply_to)
             if isinstance(loaded_msg, Request):
-                await self._recv_request(loaded_msg, *args, **kwargs)
+                await self._recv_request(loaded_msg)
             elif isinstance(loaded_msg, Response):
-                await self._recv_response(loaded_msg, *args, **kwargs)
+                await self._recv_response(loaded_msg)
             else:
                 self.log.error(f'Unknown message type: {msg} ({type(loaded_msg)})')
         except Exception as e:
             self.log.error(f'Error parsing message: {msg}, exception: {e}, traceback: {traceback.format_exc()}')
 
-    async def _message_returned(self, msg: str, *args, **kwargs):
+    async def _message_returned(self, 
+        msg: str, 
+        msg_type: str, 
+        correlation_id: Optional[str] = None, 
+        content_type: Optional[str] = None,
+        app_id: Optional[str] = None,
+        headers: Optional[dict[str, str]] = None,
+        reply_to: Optional[str] = None
+    ):
         """Callback on message returned by the transport
 
         Args:
             msg (str): returned message
         """ 
         try:
-            loaded_msg = self._load_message(msg, **kwargs)
+            loaded_msg = self._load_message(msg, msg_type, correlation_id, content_type, app_id, headers, reply_to)
             if isinstance(loaded_msg, Request):
                 resp = Response(
                     exception=RPCDeliveryFailed(f'Request not delivered. correlation_id: {loaded_msg.correlation_id}')
@@ -332,8 +356,9 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
         Might be overloaded to process the message before sending
         """
         if isinstance(msg, Response) and msg.exception:
+            msg.result = msg.exception.message # duping message of exception in result field
             await self.connection.write(
-                msg.exception.message, 
+                msg.dumps(), 
                 content_type='application/x-exception', 
                 correlation_id=msg.correlation_id, 
                 app_id=msg.app_id,

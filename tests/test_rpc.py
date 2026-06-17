@@ -3,7 +3,8 @@ import unittest
 import asyncio
 from asyncframework.net import SocketConnection
 from asyncframework.net import SocketServer
-from asyncframework.rpc import RPC, rpc_method
+from asyncframework.rpc import RPC, rpc_method, RPCConnectionMixin
+from asyncframework.rpc.types import RPCException
 from asyncframework.rpc.packets import RPCPackets, rpc_packet
 from packets import Packet, makeField
 from packets.typedef.int_t import int_t
@@ -16,6 +17,13 @@ def test(app, msg, **kwargs):
     app.assertEqual(msg, 'complete')
     app.test_complete.set_result(True)
     return 'ok'
+
+
+@rpc_method()
+def test_fail(app, msg, **kwargs):
+    app.assertEqual(msg, 'complete')
+    app.test_complete.set_result(True)
+    raise RuntimeError('Exception!!!')
 
 
 class RPCPacketTestRequest(Packet):
@@ -35,20 +43,24 @@ def packet_test(app, msg, *args, **kwargs):
     return RPCPacketTestReply(reply=1)
 
 
+class MySocketConnection(RPCConnectionMixin, SocketConnection):
+    pass
+
+
 class RPCTestCase(unittest.IsolatedAsyncioTestCase):
     test_complete: asyncio.Future
 
     async def test_rpc(self):
         self.test_complete = asyncio.Future()
         def fabric():
-            sc = SocketConnection()
+            sc = MySocketConnection()
             RPC(self, sc)
             return sc
         srv = SocketServer(fabric, host='127.0.0.1', port=56789)
         await srv.start()
         serv_future = srv.run()
         await asyncio.sleep(.2)
-        src = SocketConnection()
+        src = MySocketConnection()
         src_rpc = RPC(self, src)
         await src.connect_to('127.0.0.1', 56789)
         res = await src_rpc.call('test', 'complete')
@@ -60,14 +72,14 @@ class RPCTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_packet_rpc(self):
         self.test_complete = asyncio.Future()
         def fabric_packet():
-            sc = SocketConnection()
+            sc = MySocketConnection()
             RPCPackets(self, sc, response_models=[RPCPacketTestReply, RPCPacketTestRequest])
             return sc
         srv = SocketServer(fabric_packet, host='127.0.0.1', port=56789)
         await srv.start()
         serv_future = srv.run()
         await asyncio.sleep(.2)
-        src = SocketConnection()
+        src = MySocketConnection()
         src_rpc = RPCPackets(self, src, response_models=[RPCPacketTestReply, RPCPacketTestRequest])
         await src.connect_to('127.0.0.1', 56789)
         res = await src_rpc.call(RPCPacketTestRequest(query='test'))
@@ -75,3 +87,20 @@ class RPCTestCase(unittest.IsolatedAsyncioTestCase):
         await self.test_complete
         await srv.stop()
         await serv_future
+
+    async def test_rpc_exception(self):
+        self.test_complete = asyncio.Future()
+        def fabric():
+            sc = MySocketConnection()
+            RPC(self, sc)
+            return sc
+        srv = SocketServer(fabric, host='127.0.0.1', port=56789)
+        await srv.start()
+        serv_future = srv.run()
+        await asyncio.sleep(.2)
+        src = MySocketConnection()
+        src_rpc = RPC(self, src)
+        await src.connect_to('127.0.0.1', 56789)
+        with self.assertRaises(RPCException) as cm:
+            res = await src_rpc.call('test_fail', 'complete')
+        self.assertEqual(cm.exception.type, 'RuntimeError')
