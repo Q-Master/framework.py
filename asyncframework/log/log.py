@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
+from typing import Optional, Dict, Union
 import sys
-import os
 import logging
 import logging.handlers
-from typing import Optional, Dict, Union
-from .formatter import LogFormatter
+from multiprocessing import Queue
+from .formatter import LogFormatter, LoggerTaggingAdapter
+
 
 __all__ = ['set_levels', 'set_handler', 'init_logging', 'get_logger']
 
 
-_active_loggers = []
 _logger_names = ['']
+_listener: Optional[logging.handlers.QueueListener] = None
 
 
 class FWLogger(logging.Logger):
@@ -49,7 +50,10 @@ def init_logging(
     log_level: Union[int, str] = 'DEBUG',
     log_levels: Optional[dict] = None,
     log_rotated_amount: int = 1,
-    formatter: Optional[logging.Formatter] = None
+    formatter: Optional[logging.Formatter] = None,
+    is_mutliprocessing: bool = False,
+    is_master: bool = False,
+    queue: Optional[Queue] = None
 ):
     """Initialize logging
 
@@ -64,6 +68,9 @@ def init_logging(
         log_levels (Optional[dict], optional): pairs of 'logger name': log level. Defaults to None.
         log_rotated_amount (int, optional): amount of rotated logs (days to keep log files). Defaults to 1.
         formatter (Optional[logging.Formatter], optional): the formatter used to format log strings. Defaults to None.
+        is_multiprocessing (bool, optional): the logger will be used in multiprocessing environment (must be set explicitly after config loading)
+        is_master (bool, optional): the logger must initialize Queue Listener for this process
+        queue (Optional[Queue], optional): queue must be created for master process in `Config.init_logging`
     """
     handler: Optional[logging.Handler] = None
 
@@ -80,23 +87,30 @@ def init_logging(
     else:
         if not log_filename:
             raise RuntimeError(f'Log filename is not set')
+        if is_mutliprocessing:
+            if queue:
+                if is_master:
+                    handler = logging.handlers.TimedRotatingFileHandler(log_filename, when='midnight', backupCount=log_rotated_amount, encoding='utf-8')
+                    _listener = logging.handlers.QueueListener(queue, handler)
+                    _listener.start()
+                else:
+                    handler = logging.handlers.QueueHandler(queue)
+            else:
+                raise RuntimeError(f'Queue must be set for multiprocessing environments.')
         handler = logging.handlers.TimedRotatingFileHandler(log_filename, when='midnight', backupCount=log_rotated_amount, encoding='utf-8')
 
     handler.setFormatter(formatter or LogFormatter())
 
     if log_name:
-        set_local_top_logger_name(log_name)
-        change_active_logger_names(log_name)
+        _logger_names[0] = log_name
         logging.setLoggerClass(FWLogger)
-        change_all_logger_names(log_name)
 
     set_handler(handler)
     new_loglevels: Dict[Optional[str], Union[int, str]] = {
         None: log_level
     }
-    if log_levels is None:
-        log_levels = {}
-    new_loglevels.update(log_levels)
+    if log_levels is not None:
+        new_loglevels.update(log_levels)
     set_levels(new_loglevels)
 
 
@@ -114,34 +128,19 @@ def get_logger(name: Optional[str] = None, parent: Optional[logging.Logger] = No
         name = _logger_names[0]
 
     if name:
-        if _logger_names[0]:
-            name = _logger_names[0]
-
         logger = logging.Logger(name)
         if isinstance(parent, logging.Logger):
             logger.parent = parent
+        elif isinstance(parent, LoggerTaggingAdapter):
+            logger.parent = parent.logger
         else:
-            logger.parent = logging.getLogger(parent) if parent else logging.Logger.root  # type: ignore
-
-        _active_loggers.append(logger)
+            logger.parent = logging.Logger.root
 
         return logger
     else:
-        return logging.Logger.root  # type: ignore
+        return logging.Logger.root
 
 
-def set_local_top_logger_name(name: str):
-    _logger_names[0] = name
-
-
-def change_active_logger_names(name: str):
-    for l in _active_loggers:
-        setattr(l, 'name', name)
-
-
-def change_all_logger_names(name: str):
-    logger_dict = logging.Logger.manager.loggerDict
-    for v in logger_dict.values():
-        if hasattr(v, 'name'):
-            v.name = name # type: ignore
-
+def stop_multiprocessing():
+    if _listener:
+        _listener.stop()

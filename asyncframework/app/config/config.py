@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from typing import Dict, Optional
 from platform import node
+from multiprocessing import Queue
 from packets import makeField
 from packets.processors import Hash
 from packets.typedef.loglevel_t import loglevel_t
@@ -31,10 +32,14 @@ class Config(ConfigReader):
     log_format_rsyslog: str = makeField(string_t, default=node() + ' %(name)s:<%(levelname).1s> %(module)s:%(lineno)d] %(tags)s %(message)s')
     log_date_format: str = makeField(string_t, default='%Y-%m-%d %H:%M:%S')     
     log_rotated_amount: int = makeField(int_t, default=1)
+    queue: Optional[Queue] = None
+    is_mutiprocessing: bool = False
 
-    def init_logging(self):
+    def init_logging(self, is_master = False):
         """Initialize logging using the parameters from config file or defaults
         """
+        if Config.is_mutiprocessing and is_master:
+            Config.queue = Queue(-1)
         log.init_logging(
             stdout=self.stdout,
             log_filename=self.log_filename,
@@ -45,5 +50,8 @@ class Config(ConfigReader):
             log_level=self.log_level,
             log_levels=self.log_levels,
             log_rotated_amount=self.log_rotated_amount,
-            formatter=LogFormatter(self.log_format if not self.syslog else self.log_format_rsyslog, self.log_date_format)
+            formatter=LogFormatter(self.log_format if not self.syslog else self.log_format_rsyslog, self.log_date_format),
+            is_mutliprocessing=Config.is_mutiprocessing,
+            is_master = is_master,
+            queue = Config.queue
         )

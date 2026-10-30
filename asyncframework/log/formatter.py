@@ -1,7 +1,6 @@
 # -*- coding:utf-8 -*-
 from typing import Tuple, Any, Mapping, Sequence, MutableMapping, Optional
 from itertools import chain
-from copy import deepcopy
 import logging
 
 

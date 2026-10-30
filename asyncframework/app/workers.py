@@ -9,7 +9,7 @@ from .proctitle import set_process_name
 from .try_uvloop import *
 from .service import Service
 from ..aio.maybefuture import mayBeFuture
-from ..log.log import get_logger
+from ..log.log import get_logger, stop_multiprocessing
 
 
 __all__ = ['ManagerTypes', 'Manager', 'Worker']
@@ -125,6 +125,7 @@ class Manager(Service):
         if self.__workers_run_future:
             await self.__workers_run_future
         await self.__stop_manager__()
+        stop_multiprocessing()
 
     def __start_worker(self):
         """Start the worker process
