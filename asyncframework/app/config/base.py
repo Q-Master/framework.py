@@ -1,8 +1,8 @@
 # -*- coding:utf-8 -*-
 from typing import Optional, Union, TypeVar, Self, Dict, Type, Generic, Any, overload
-import types
-from packets import Packet, TablePacket, PacketBase, Field
+from packets import Packet, TablePacket, PacketBase
 from packets._packetbase import PacketMeta
+from packets.packet import TablePacketMeta
 from packets import json
 from ...log import log
 from ...util.dict_merge import merge_dicts
@@ -37,6 +37,10 @@ class ConfigProtocolMeta(PacketMeta):
         namespace['__config_readers__'] = config_readers
         namespace['__filename__'] = list(filenames.keys())
         return super(ConfigProtocolMeta, cls).__new__(cls, name, bases, namespace, **kwargs)
+
+
+class ConfigTableProtocolMeta(ConfigProtocolMeta, TablePacketMeta):
+    pass
 
 
 class ConfigBase(PacketBase, metaclass=ConfigProtocolMeta):
@@ -87,6 +91,10 @@ class ConfigBase(PacketBase, metaclass=ConfigProtocolMeta):
         pass
 
 
+class TableConfigBase(ConfigBase, metaclass=ConfigTableProtocolMeta):
+    pass
+
+
 _R = TypeVar('_R', bound=ConfigBase)
 
 
@@ -122,8 +130,14 @@ class ConfigReader(Packet, ConfigBase):
 _T = TypeVar('_T', bound=PacketBase)
 
 
-class TableConfigReader(TablePacket[_T], ConfigBase):
-    pass
+class TableConfigReader(TablePacket[_T], TableConfigBase):
+    @classmethod
+    def load_cfg(cls, filename: Optional[str] = None) -> Self:
+        data = cls._load_data(filename)
+        module = cls.load(data)
+        module._reload_complete()
+        module.set_ro(True)
+        return module
 
 
 _CP = TypeVar('_CP', bound=ConfigReader)

@@ -1,12 +1,14 @@
 # -*- coding:utf-8 -*-
-import unittest, pickle
 from typing import Optional
+import unittest, pickle
+from multiprocessing import Process
+from time import sleep
 from packets import Packet, makeField, makeDefaultField
 from packets.typedef.string_t import string_t
 from packets.typedef.int_t import int_t
 from packets.typedef.bool_t import bool_t
 from asyncframework.app.config import Config, TableConfigReader, ConfigReader, configReader
-
+from .process_worker_base import Worker
 
 
 class Record(Packet):
@@ -42,6 +44,14 @@ class TConfig(Config):
 class TConfig1(Config):
     records = configReader(RecordsConfigWithField)
 
+class TestTablePacketWorker(Worker):
+    def __init__(self):
+        self.c: TConfig = TConfig.load_cfg('tests/dummy.json')
+
+    def work(self):
+        if len(self.c.records) != 3 or self.c.records.record3.name != 'test3':
+            print(f'FAIL')
+            raise RuntimeError("FAIL")
 
 class TestConfig(unittest.TestCase):
     def test_config(self):
@@ -74,3 +84,13 @@ class TestConfig(unittest.TestCase):
         c_pickled = pickle.loads(pickle.dumps(c, -1))
         self.assertHasAttr(c_pickled, 'test_call')
         self.assertEqual(c_pickled.test_call(), True)
+
+    def test_config_table_with_multiprocessing(self):
+        worker = Worker()
+        process = Process(
+            target=worker,
+            name='{0}W'.format(worker.__class__.__name__)
+        )
+        process.start()
+        while process.is_alive():
+            sleep(0.1)
