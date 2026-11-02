@@ -90,8 +90,10 @@ def init_logging(
         if is_mutliprocessing:
             if queue:
                 if is_master:
-                    handler = logging.handlers.TimedRotatingFileHandler(log_filename, when='midnight', backupCount=log_rotated_amount, encoding='utf-8')
-                    _listener = logging.handlers.QueueListener(queue, handler)
+                    qhandler = logging.handlers.TimedRotatingFileHandler(log_filename, when='midnight', backupCount=log_rotated_amount, encoding='utf-8')
+                    qhandler.setFormatter(LogFormatter(fmt='%(message)s'))
+                    handler = logging.handlers.QueueHandler(queue)
+                    _listener = logging.handlers.QueueListener(queue, qhandler)
                     _listener.start()
                 else:
                     handler = logging.handlers.QueueHandler(queue)
