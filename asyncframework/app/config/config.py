@@ -38,8 +38,8 @@ class Config(ConfigReader):
     def init_logging(self, is_master = False):
         """Initialize logging using the parameters from config file or defaults
         """
-        if Config.is_mutiprocessing and is_master:
-            Config.queue = Queue(-1)
+        if self.is_mutiprocessing and is_master:
+            self.queue = Queue(-1)
         log.init_logging(
             stdout=self.stdout,
             log_filename=self.log_filename,
@@ -51,7 +51,10 @@ class Config(ConfigReader):
             log_levels=self.log_levels,
             log_rotated_amount=self.log_rotated_amount,
             formatter=LogFormatter(self.log_format if not self.syslog else self.log_format_rsyslog, self.log_date_format),
-            is_mutliprocessing=Config.is_mutiprocessing,
+            is_mutliprocessing=self.is_mutiprocessing,
             is_master = is_master,
-            queue = Config.queue
+            queue = self.queue
         )
+
+    def set_multiprocessing(self):
+        self.is_mutiprocessing = True

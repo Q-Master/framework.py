@@ -97,7 +97,8 @@ def init_logging(
                     handler = logging.handlers.QueueHandler(queue)
             else:
                 raise RuntimeError(f'Queue must be set for multiprocessing environments.')
-        handler = logging.handlers.TimedRotatingFileHandler(log_filename, when='midnight', backupCount=log_rotated_amount, encoding='utf-8')
+        else:
+            handler = logging.handlers.TimedRotatingFileHandler(log_filename, when='midnight', backupCount=log_rotated_amount, encoding='utf-8')
 
     handler.setFormatter(formatter or LogFormatter())
 
