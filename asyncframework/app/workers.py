@@ -146,7 +146,7 @@ class Manager(Service):
         )
         process.start()
         self._workers_list.append(process)
-        return process        
+        return process      
 
     async def __worker_ended(self, process: Process):
         """Callback on worker exits.

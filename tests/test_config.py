@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 import unittest, pickle
 from typing import Optional
-from packets import Packet, makeField
+from packets import Packet, makeField, makeDefaultField
 from packets.typedef.string_t import string_t
 from packets.typedef.int_t import int_t
 from packets.typedef.bool_t import bool_t
@@ -17,12 +17,12 @@ class Record(Packet):
 
 class RecordsConfig(TableConfigReader[Record]):
     __filename__ = 'tests/records.json'
-    __default_field__ = makeField(Record, required=True)
+    __default_field__ = makeDefaultField(Record)
 
 
 class RecordsConfigWithField(TableConfigReader[Record]):
     __filename__ = 'tests/records_with_field.json'
-    __default_field__ = makeField(Record, required=True)
+    __default_field__ = makeDefaultField(Record)
     additional: bool = makeField(bool_t, required=True)
 
 
