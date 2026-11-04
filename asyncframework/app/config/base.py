@@ -1,8 +1,7 @@
 # -*- coding:utf-8 -*-
-from typing import Optional, Union, TypeVar, Self, Dict, Type, Generic, Any, overload
+from typing import Optional, TypeVar, Self, Dict, Type, Generic, Any, overload
 from packets import Packet, TablePacket, PacketBase
 from packets._packetbase import PacketMeta
-from packets.packet import TablePacketMeta
 from packets import json
 from ...log import log
 from ...util.dict_merge import merge_dicts
@@ -13,21 +12,11 @@ __all__ = ['ConfigReader', 'TableConfigReader', 'configReader']
 
 class ConfigProtocolMeta(PacketMeta):
     def __new__(cls, name, bases, namespace, **kwargs):
-        filenames: Dict[str, int] = {}
+        base_fn: Optional[str] = None
         for base in bases:
             if hasattr(base, '__filename__'):
-                fn = base.__filename__
-                if fn:
-                    if isinstance(fn, (list)):
-                        filenames.update({f: 1 for f in fn})
-                    else:
-                        filenames[fn] = 1
-        fn = namespace.get('__filename__', None)
-        if fn:
-            if isinstance(fn, (list)):
-                filenames.update({f: 1 for f in fn})
-            else:
-                filenames[fn] = 1
+                base_fn = base.__filename__
+        fn = namespace.get('__filename__', base_fn)
         config_readers = {}
 
         for base in bases:
@@ -35,19 +24,15 @@ class ConfigProtocolMeta(PacketMeta):
                 config_readers.update(base.__config_readers__)
 
         namespace['__config_readers__'] = config_readers
-        namespace['__filename__'] = list(filenames.keys())
+        namespace['__filename__'] = fn
         return super(ConfigProtocolMeta, cls).__new__(cls, name, bases, namespace, **kwargs)
-
-
-class ConfigTableProtocolMeta(ConfigProtocolMeta, TablePacketMeta):
-    pass
 
 
 class ConfigBase(PacketBase, metaclass=ConfigProtocolMeta):
     __log = log.get_logger('config')
-    __config_readers__: 'Dict[str, Type[ConfigBase]]' = {}
-    __filename__: Optional[Union[str, list]] = None
-    
+    __config_readers__: 'Dict[str, Type[ConfigBase]]'
+    __filename__: Optional[str] = None
+
     @property
     def log(self):
         return self.__log
@@ -57,42 +42,36 @@ class ConfigBase(PacketBase, metaclass=ConfigProtocolMeta):
         data = cls._load_data(filename)
         module = cls.load(data)
         module._reload_complete()
+        module.on_config_loaded()
         module.__class__.set_ro(True)
         return module
 
     @classmethod
     def _load_data(cls, filename: Optional[str] = None) -> dict:
         if filename:
-            if isinstance(cls.__filename__, list):
-                cls.__filename__.append(filename)
-            else:
-                cls.__filename__ = [cls.__filename__, filename]
+            cls.__filename__ = filename
+        print(f'Filename: {cls.__filename__}')
         cfg_data = {}
         if not cls.__filename__:
             raise RuntimeError(f'No config file for {cls.__name__}')
-        for fn in cls.__filename__:
-            with open(fn, 'r') as f:
-                rd = json.load(f)
-                merge_dicts(cfg_data, rd)
+        with open(cls.__filename__, 'r') as f:
+            rd = json.load(f)
+            merge_dicts(cfg_data, rd)
         return cfg_data
 
     def _reload_complete(self):
         self.__loading__ = True
         try:
-            for name, proto in self.__config_readers__.items():
+            for name, proto in self.__class__.__config_readers__.items():
                 module = proto.load_cfg()
                 setattr(self, name, module)
         finally:
             self.__loading__ = False
-        self.on_config_loaded()
+        
 
     def on_config_loaded(self):
         """On config loaded callback"""
         pass
-
-
-class TableConfigBase(ConfigBase, metaclass=ConfigTableProtocolMeta):
-    pass
 
 
 _R = TypeVar('_R', bound=ConfigBase)
@@ -116,6 +95,8 @@ class ConfigReaderProtocol(Generic[_R]):
         raise RuntimeError(f'Config is readonly!')
 
     def __set_name__(self, owner: 'Type[ConfigBase]', name):
+        if not hasattr(owner, '__config_readers__'):
+            owner.__config_readers__ = {}
         if name in owner.__config_readers__:
             raise AttributeError(f'Redefinition of a config reader {owner.__name__}::{name}')
         self._instance_name = f'_{name}'
@@ -130,7 +111,7 @@ class ConfigReader(Packet, ConfigBase):
 _T = TypeVar('_T', bound=PacketBase)
 
 
-class TableConfigReader(TablePacket[_T], TableConfigBase):
+class TableConfigReader(TablePacket[_T], ConfigBase):
     @classmethod
     def load_cfg(cls, filename: Optional[str] = None) -> Self:
         data = cls._load_data(filename)

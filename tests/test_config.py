@@ -51,7 +51,9 @@ class TestTablePacketWorker(Worker):
     def work(self):
         if len(self.c.records) != 3 or self.c.records.record3.name != 'test3':
             print(f'FAIL')
-            raise RuntimeError("FAIL")
+            raise RuntimeError('FAIL')
+        else:
+            print('OK')
 
 class TestConfig(unittest.TestCase):
     def test_config(self):
@@ -86,7 +88,7 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(c_pickled.test_call(), True)
 
     def test_config_table_with_multiprocessing(self):
-        worker = Worker()
+        worker = TestTablePacketWorker()
         process = Process(
             target=worker,
             name='{0}W'.format(worker.__class__.__name__)
