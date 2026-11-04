@@ -50,7 +50,6 @@ class ConfigBase(PacketBase, metaclass=ConfigProtocolMeta):
     def _load_data(cls, filename: Optional[str] = None) -> dict:
         if filename:
             cls.__filename__ = filename
-        print(f'Filename: {cls.__filename__}')
         cfg_data = {}
         if not cls.__filename__:
             raise RuntimeError(f'No config file for {cls.__name__}')
