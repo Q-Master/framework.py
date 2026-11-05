@@ -39,6 +39,8 @@ class TConfig(Config):
 
     def test_call(self) -> bool:
         return True
+    def on_config_loaded(self):
+        print("ON CONFIG LOADED")
 
 
 class TConfig1(Config):

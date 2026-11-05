@@ -116,6 +116,7 @@ class TableConfigReader(TablePacket[_T], ConfigBase):
         data = cls._load_data(filename)
         module = cls.load(data)
         module._reload_complete()
+        module.on_config_loaded()
         module.set_ro(True)
         return module
 
