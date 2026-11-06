@@ -19,4 +19,7 @@ class TestLogging(unittest.TestCase):
         log_adapted_adapted = LoggerTaggingAdapter(log_adapted)
         log_adapted_adapted.tags['SomeString'] = 'text'
         log_adapted_adapted.info('Tagged tagged log')
+        print(log_adapted_adapted.tags.keys())
+        del log_adapted_adapted.tags['SomeString']
         log_adapted.info('Should be no SomeString')
+

@@ -31,6 +31,10 @@ class TagDict(dict):
     def __str__(self) -> str:
         return f'{{{",".join((":".join(map(str, i)) for i in self.items()))}}}'
 
+    def __delitem__(self, __key: Any) -> None:
+        __key = f'"{__key}"'
+        super().__delitem__(__key)
+
 
 def _to_tag_value(__value: Any) -> str:
     if isinstance(__value, str):
