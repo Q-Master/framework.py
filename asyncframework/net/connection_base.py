@@ -88,4 +88,4 @@ class ConnectionBase(metaclass=ABCMeta):
 
     async def on_message_returned(self, msg: str, *args, **kwargs):
         if self.__on_message_returned:
-            await mayBeFuture(self.__on_message_returned, self, msg, *args, **kwargs)
+            await mayBeFuture(self.__on_message_returned, msg, *args, **kwargs)
