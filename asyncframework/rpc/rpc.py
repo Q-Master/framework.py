@@ -278,13 +278,11 @@ class RPC(Generic[T]):  # pylint: disable=unsubscriptable-object
             msg (str): returned message
         """ 
         try:
-            need_stop = True
+            need_stop = False
             if self.__on_message_returned:
                 res = self.__on_message_returned(raw_msg)
-                if isinstance(res, (asyncio.Future, CoroutineType)):
+                if isinstance(res, (asyncio.Future, CoroutineType, Awaitable)):
                     res = await res
-                else:
-                    return res
                 need_stop |= res
             if need_stop:
                 js: dict = json.loads(msg)
